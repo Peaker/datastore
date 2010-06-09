@@ -1,45 +1,49 @@
 {-# OPTIONS -O2 -Wall #-}
 
 module ObjectStore
-    (ObjectStore, IRef, create, insert, lookup, main)
+    (ObjectStore, IRef, insert, lookup, set)
 where
 
 import qualified Db
-import Db(Db, create)
+import Db(Db)
 
 import Prelude hiding (lookup)
-import Data.Binary(Binary, encode, decode)
-import qualified Data.ByteString as SBS
-import qualified Data.ByteString.Lazy as LBS
-import System.Random(randomIO)
-import RandInstances()
 import Control.Monad(replicateM)
+import qualified Data.ByteString as SBS
+import Data.Binary(Binary(..))
+import Data.Binary.Get(getByteString)
+import Data.Binary.Put(putByteString)
+import ByteStringUtils(decodeS, encodeS)
+import RandInstances()
+import System.Random(randomIO)
+
+guidLen :: Int
+guidLen = 16
 
 type Guid = SBS.ByteString
+
 type ObjectStore = Db
 
 data IRef a = IRef {
-    _irefGuid :: Guid,
-    _irefObjectStore :: ObjectStore
+    irefGuid :: Guid
     }
 
-strictifyBS :: LBS.ByteString -> SBS.ByteString
-strictifyBS = SBS.concat . LBS.toChunks
+instance Binary (IRef a) where
+  get = fmap IRef (getByteString guidLen)
+  put = putByteString . irefGuid
 
-lazifyBS :: SBS.ByteString -> LBS.ByteString
-lazifyBS = LBS.fromChunks . return
+insert :: Binary a => ObjectStore -> a -> IO (IRef a)
+insert os x = do
+  key <- SBS.pack `fmap` replicateM guidLen randomIO
+  let iref = (IRef key)
+  set os iref x
+  return iref
 
-insert :: Binary a => a -> ObjectStore -> IO (IRef a)
-insert x os = do
-  key <- SBS.pack `fmap` replicateM 16 randomIO
-  Db.insert os key . strictifyBS . encode $ x
-  return (IRef key os)
+set :: Binary a => ObjectStore -> IRef a -> a -> IO ()
+set os (IRef key) x =
+  Db.insert os key . encodeS $ x
 
-lookup :: Binary a => IRef a -> IO a
-lookup (IRef key os) = do
+lookup :: Binary a => ObjectStore -> IRef a -> IO a
+lookup os (IRef key) = do
   Just bs <- Db.lookup os key
-  return . decode . lazifyBS $ bs
-
-0main :: IO ()
-main = do
-  print "Hello world!"
+  return . decodeS $ bs
