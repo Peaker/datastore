@@ -1,0 +1,7 @@
+* Edit a tree. Support:
+  * Adding children
+  * Removing children
+
+* Encode Tree:
+  * hash (nodeKey, "count") -> Int number of children
+  * hash (nodeKey, n) -> n'th child
