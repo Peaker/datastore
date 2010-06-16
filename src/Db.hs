@@ -1,12 +1,15 @@
 {-# OPTIONS -O2 -Wall #-}
 
 module Db
-    (Db, open, withDb,
+    (Db, withDb,
      lookupBS, setBS,
-     lookup,   set)
+     lookup,   set,
+     withCursor,
+     nextKeyBS, nextKey)
 where
 
 import ByteStringUtils(encodeS, decodeS)
+import Control.Arrow(second)
 import Control.Exception(bracket)
 import Prelude hiding (lookup)
 import qualified Database.Berkeley.Db as Berkeley
@@ -18,6 +21,8 @@ data Db = Db {
   dbBerkeley :: Berkeley.Db,
   _dbEnv :: Berkeley.DbEnv
   }
+
+type Cursor = Berkeley.DbCursor
 
 envDir :: FilePath
 envDir = "/tmp/dbenv"
@@ -36,6 +41,15 @@ close (Db db env) = do
   Berkeley.db_close [] db
   -- TODO: waitForEmptyMap m
   Berkeley.dbEnv_close [] env
+
+withCursor :: Db -> (Cursor -> IO a) -> IO a
+withCursor db = Berkeley.db_withCursor [] (dbBerkeley db) Nothing
+
+nextKeyBS :: Cursor -> IO (Maybe (ByteString, ByteString))
+nextKeyBS cursor = Berkeley.dbCursor_get [Berkeley.DB_NEXT] cursor
+
+nextKey :: Binary a => Cursor -> IO (Maybe (ByteString, a))
+nextKey cursor = (fmap . fmap . second) decodeS (nextKeyBS cursor)
 
 withDb :: FilePath -> (Db -> IO a) -> IO a
 withDb filePath = bracket (open filePath) close
