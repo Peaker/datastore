@@ -3,15 +3,20 @@
 module Main (main) where
 
 import qualified Db
-import qualified ObjectStore
-import qualified Data.ByteString.Char8 as SBS8
-import ByteStringUtils(encodeS)
-
-ints :: [Int]
-ints = [1..10]
+import qualified Ref
+import Data.ByteString.UTF8(fromString)
+import Tree(Tree(..))
 
 main :: IO ()
 main = do
   db <- Db.open "/tmp/db.db"
-  keys <- mapM (ObjectStore.insert db . show) ints
-  Db.insert db (SBS8.pack "root") (encodeS keys)
+  ref <- Ref.new db "hello"
+  strings <- mapM (mkSubTree db . show) [1..10 :: Int]
+  children <- mapM (Ref.new db) strings
+  let rootKey = fromString "root"
+  treeRoot <- Ref.new db $ Node ref children
+  Db.set db rootKey treeRoot
+  where
+    mkSubTree db i = do
+      ref <- Ref.new db i
+      return (Node ref [])
