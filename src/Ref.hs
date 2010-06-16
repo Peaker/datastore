@@ -2,7 +2,7 @@
 {-# OPTIONS -fno-warn-orphans #-}
 
 module Ref
-    (DBRef, new, read, write, modify, pureModify)
+    (DBRef, new, read, write, modify, pureModify, property)
 where
 
 import Prelude hiding (read)
@@ -10,6 +10,7 @@ import Prelude hiding (read)
 import qualified Db
 import Db(Db)
 
+import Property(Property(..))
 import Control.Monad((<=<))
 import qualified Data.ByteString as SBS
 import Data.Binary(Binary(..))
@@ -24,6 +25,9 @@ guidLen = 16
 type Guid = SBS.ByteString
 
 -- DBRef:
+
+property :: Binary a => Db -> DBRef a -> Property IO a
+property db ref = Property (read db ref) (write db ref)
 
 writeKey :: Binary a => Db -> SBS.ByteString -> a -> IO (DBRef a)
 writeKey db key x = do

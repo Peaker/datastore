@@ -1,8 +1,10 @@
 {-# OPTIONS -O2 -Wall #-}
+{-# LANGUAGE TypeOperators #-}
 
 module Main (main) where
 
-import Control.Arrow(first, second)
+import Prelude hiding ((.))
+import Control.Category((.))
 import qualified Db
 import Db(Db)
 import Data.Monoid(mappend)
@@ -21,6 +23,9 @@ import Graphics.UI.VtyWidgets.Widget(Widget)
 import Graphics.UI.VtyWidgets.Run(runWidgetLoop)
 import qualified Ref
 import Tree(Tree(..), Ref, atChildrenRefs, makeLeafRef)
+import qualified Property
+import Property(Property, composeLabel)
+import Data.Record.Label.Tuple(first, second)
 
 quitKey :: ModKey
 quitKey = ([Vty.MCtrl], Vty.KASCII 'q')
@@ -46,33 +51,37 @@ indent width disp = Grid.makeView [[Spacer.make (SizeRange.fixedSize (Vector2 wi
 makeTreeEdit :: Db -> Ref -> IO (Widget (IO ()))
 makeTreeEdit db treeRef = do
   treeNode <- Ref.read db treeRef
-  let valueRef = nodeValueRef treeNode
-  valueEdit <- makeValueEdit valueRef
+  let valueProp = Ref.property db (nodeValueRef treeNode)
+  valueEdit <- makeTextEdit 2 TextEdit.defaultAttr TextEdit.editingAttr
+               (valueProp `composeLabel` second)
   let childrenRefs = nodeChildrenRefs treeNode
   treeEdits <- mapM (makeTreeEdit db) childrenRefs
   let innerItems = map (return . (,) True) treeEdits
-  value <- Ref.read db valueRef
-  let innerGrid =
-        Widget.atDisplay (indent 5) .
-        Grid.make (Ref.pureModify db valueRef . first . second . const) innerItems . snd . fst $
-        value
-      outerItems = map (return . (,) True) $
+  innerGrid <- Widget.atDisplay (indent 5) `fmap`
+               makeGrid innerItems (valueProp `composeLabel` (second . first))
+  let outerItems = map (return . (,) True) $
                    [valueEdit] ++
                    if null treeEdits
                    then []
                    else [innerGrid]
-      outerGrid = Grid.make (Ref.pureModify db valueRef . first . first . const) outerItems . fst . fst $
-                  value
-      withKeys = Widget.atKeymap
-                 (`mappend`
-                  Keymap.simpleton "New child node" newChildKey
-                  addNewChild) outerGrid
-  return withKeys
+  outerGrid <- Widget.atKeymap
+               (`mappend` Keymap.simpleton "New child node"
+                newChildKey addNewChild)
+               `fmap`
+               makeGrid outerItems (valueProp `composeLabel` (first . first))
+  return outerGrid
   where
     addNewChild = do
       newRef <- makeLeafRef db "<new node>"
       (Ref.pureModify db treeRef . atChildrenRefs) (++ [newRef])
-    makeValueEdit valueRef = do
-      return . fmap (Ref.pureModify db valueRef . second . const) .
-        TextEdit.make 2 TextEdit.defaultAttr TextEdit.editingAttr . snd =<<
-        Ref.read db valueRef
+
+makeGrid :: [[(Bool, Widget (IO ()))]] -> Property IO Grid.Model -> IO (Widget (IO ()))
+makeGrid rows gridModelP =
+  fmap (Grid.make (Property.set gridModelP) rows) $
+  Property.get gridModelP
+
+makeTextEdit :: Int -> Vty.Attr -> Vty.Attr -> Property IO TextEdit.Model -> IO (Widget (IO ()))
+makeTextEdit maxLines defAttr editAttr textEditModelP =
+  fmap (fmap (Property.set textEditModelP) .
+        TextEdit.make maxLines defAttr editAttr) $
+  Property.get textEditModelP
