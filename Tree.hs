@@ -1,6 +1,7 @@
 {-# OPTIONS -O2 -Wall #-}
 
-module Tree(Tree(..), Data, Ref, makeValueRef, makeNodeRef, makeLeafRef) where
+module Tree(Tree(..), atValueRef, atChildrenRefs,
+            Data, Ref, makeValueRef, makeNodeRef, makeLeafRef) where
 
 import Control.Monad(liftM2)
 import Ref(DBRef)
@@ -14,6 +15,10 @@ data Tree a = Node {
   nodeValueRef :: DBRef a,
   nodeChildrenRefs :: [DBRef (Tree a)]
   }
+atValueRef :: (DBRef a -> DBRef a) -> Tree a -> Tree a
+atValueRef f (Node valueRef childrenRefs) = Node (f valueRef) childrenRefs
+atChildrenRefs :: ([DBRef (Tree a)] -> [DBRef (Tree a)]) -> Tree a -> Tree a
+atChildrenRefs f (Node valueRef childrenRefs) = Node valueRef (f childrenRefs)
 
 instance Binary (Tree a) where
   put (Node value children) = put value >> put children

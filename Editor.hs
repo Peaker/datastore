@@ -20,13 +20,13 @@ import qualified Graphics.UI.VtyWidgets.Spacer as Spacer
 import Graphics.UI.VtyWidgets.Widget(Widget)
 import Graphics.UI.VtyWidgets.Run(runWidgetLoop)
 import qualified Ref
-import Tree(Tree(..), Ref)
+import Tree(Tree(..), Ref, atChildrenRefs, makeLeafRef)
 
 quitKey :: ModKey
 quitKey = ([Vty.MCtrl], Vty.KASCII 'q')
 
--- newChildKey :: ModKey
--- newChildKey = ([Vty.MCtrl], Vty.KASCII 'n')
+newChildKey :: ModKey
+newChildKey = ([Vty.MCtrl], Vty.KASCII 'n')
 
 main :: IO ()
 main = do
@@ -48,7 +48,8 @@ makeTreeEdit db treeRef = do
   treeNode <- Ref.read db treeRef
   let valueRef = nodeValueRef treeNode
   valueEdit <- makeValueEdit valueRef
-  treeEdits <- mapM (makeTreeEdit db) (nodeChildrenRefs treeNode)
+  let childrenRefs = nodeChildrenRefs treeNode
+  treeEdits <- mapM (makeTreeEdit db) childrenRefs
   let innerItems = map (return . (,) True) treeEdits
   value <- Ref.read db valueRef
   let innerGrid =
@@ -62,11 +63,15 @@ makeTreeEdit db treeRef = do
                    else [innerGrid]
       outerGrid = Grid.make (Ref.pureModify db valueRef . first . first . const) outerItems . fst . fst $
                   value
-      -- withKeys = Widget.atKeymap (`mappend`
-      --                             Keymap.simpleton "New child node" newChildKey
-      --                             xxx) outerGrid
-  return outerGrid
+      withKeys = Widget.atKeymap
+                 (`mappend`
+                  Keymap.simpleton "New child node" newChildKey
+                  addNewChild) outerGrid
+  return withKeys
   where
+    addNewChild = do
+      newRef <- makeLeafRef db "<new node>"
+      (Ref.pureModify db treeRef . atChildrenRefs) (++ [newRef])
     makeValueEdit valueRef = do
       return . fmap (Ref.pureModify db valueRef . second . const) .
         TextEdit.make 2 TextEdit.defaultAttr TextEdit.editingAttr . snd =<<
