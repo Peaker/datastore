@@ -2,7 +2,7 @@
 {-# OPTIONS -fno-warn-orphans #-}
 
 module Ref
-    (DBRef, new, read, write)
+    (DBRef, new, read, write, modify, pureModify)
 where
 
 import Prelude hiding (read)
@@ -10,6 +10,7 @@ import Prelude hiding (read)
 import qualified Db
 import Db(Db)
 
+import Control.Monad((<=<))
 import qualified Data.ByteString as SBS
 import Data.Binary(Binary(..))
 import Data.Binary.Get(getByteString)
@@ -50,3 +51,9 @@ read :: Binary a => Db -> DBRef a -> IO a
 read db (DBRef key) = do
   Just bs <- Db.lookup db key
   return bs
+
+modify :: Binary a => Db -> DBRef a -> (a -> IO a) -> IO ()
+modify db key f = (write db key <=< f) =<< read db key
+
+pureModify :: Binary a => Db -> DBRef a -> (a -> a) -> IO ()
+pureModify db key f = modify db key (return . f)
