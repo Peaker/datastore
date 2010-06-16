@@ -22,10 +22,10 @@ import Tree(Tree(..))
 
 main :: IO ()
 main = do
-  db <- Db.open "/tmp/db.db"
-  Just root <- Db.lookup db (fromString "root")
-  makeWidget <- makeTreeEditMaker db root
-  runWidgetLoop . const $ makeWidget
+  Db.withDb "/tmp/db.db" $ \db -> do
+    Just root <- Db.lookup db (fromString "root")
+    makeWidget <- makeTreeEditMaker db root
+    runWidgetLoop . const $ makeWidget
 
 indent :: Int -> Display a -> Display a
 indent width disp = Grid.makeView [[Spacer.make (SizeRange.fixedSize (Vector2 width 0)), disp]]
