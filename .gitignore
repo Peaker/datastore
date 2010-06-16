@@ -1,0 +1,5 @@
+.gitignore
+*.hi
+*.o
+Editor
+makedb
