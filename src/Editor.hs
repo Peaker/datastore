@@ -7,7 +7,7 @@ import Prelude hiding ((.))
 import Control.Category((.))
 import qualified Db
 import Db(Db)
-import Data.Monoid(mappend)
+import Data.Monoid(mempty, mappend)
 import Data.ByteString.UTF8(fromString)
 import Data.Vector.Vector2(Vector2(..))
 import qualified Graphics.Vty as Vty
@@ -22,9 +22,10 @@ import qualified Graphics.UI.VtyWidgets.Spacer as Spacer
 import Graphics.UI.VtyWidgets.Widget(Widget)
 import Graphics.UI.VtyWidgets.Run(runWidgetLoop)
 import qualified Ref
-import Tree(Tree(..), Ref, atChildrenRefs, makeLeafRef)
+import qualified Tree
 import qualified Property
 import Property(Property, composeLabel)
+import qualified Data.Record.Label as Label
 import Data.Record.Label.Tuple(first, second)
 
 quitKey :: ModKey
@@ -32,6 +33,9 @@ quitKey = ([Vty.MCtrl], Vty.KASCII 'q')
 
 newChildKey :: ModKey
 newChildKey = ([Vty.MCtrl], Vty.KASCII 'n')
+
+delChildKey :: ModKey
+delChildKey = ([Vty.MCtrl], Vty.KASCII 'o')
 
 main :: IO ()
 main = do
@@ -48,32 +52,44 @@ main = do
 indent :: Int -> Display a -> Display a
 indent width disp = Grid.makeView [[Spacer.make (SizeRange.fixedSize (Vector2 width 0)), disp]]
 
-makeTreeEdit :: Db -> Ref -> IO (Widget (IO ()))
+makeTreeEdit :: Db -> Tree.Ref -> IO (Widget (IO ()))
 makeTreeEdit db treeRef = do
   treeNode <- Ref.read db treeRef
-  let valueProp = Ref.property db (nodeValueRef treeNode)
+  let valueProp = Ref.property db (Label.get Tree.nodeValueRef treeNode)
   valueEdit <- makeTextEdit 2 TextEdit.defaultAttr TextEdit.editingAttr
                (valueProp `composeLabel` second)
-  let childrenRefs = nodeChildrenRefs treeNode
+  let childrenRefs = Label.get Tree.nodeChildrenRefs treeNode
   treeEdits <- mapM (makeTreeEdit db) childrenRefs
   let innerItems = map (return . (,) True) treeEdits
-  innerGrid <- Widget.atDisplay (indent 5) `fmap`
-               makeGrid innerItems (valueProp `composeLabel` (second . first))
-  let outerItems = map (return . (,) True) $
-                   [valueEdit] ++
-                   if null treeEdits
-                   then []
-                   else [innerGrid]
+      innerGridModelP = valueProp `composeLabel` (second . first)
+  Vector2 _ curChildIndex <- Grid.getCursor innerItems `fmap` Property.get innerGridModelP
+  innerGridItem <- if null treeEdits then
+                     return (False, mempty)
+                   else
+                     ((,) True .
+                      Widget.atDisplay (indent 5) .
+                      Widget.atKeymap
+                      (`mappend` Keymap.simpleton "Del node"
+                                 delChildKey (delChild curChildIndex)))
+                     `fmap`
+                     makeGrid innerItems innerGridModelP
+  let outerItems = [[(True, valueEdit)]] ++
+                   [[innerGridItem]]
   outerGrid <- Widget.atKeymap
                (`mappend` Keymap.simpleton "New child node"
-                newChildKey addNewChild)
+                          newChildKey addNewChild)
                `fmap`
                makeGrid outerItems (valueProp `composeLabel` (first . first))
   return outerGrid
   where
     addNewChild = do
-      newRef <- makeLeafRef db "<new node>"
-      (Ref.pureModify db treeRef . atChildrenRefs) (++ [newRef])
+      newRef <- Tree.makeLeafRef db "<new node>"
+      Ref.pureModify db treeRef . Label.mod Tree.nodeChildrenRefs $ (++ [newRef])
+    delChild index =
+      Ref.pureModify db treeRef . Label.mod Tree.nodeChildrenRefs $ remove index
+
+remove :: Int -> [a] -> [a]
+remove n xs = take n xs ++ drop (n+1) xs
 
 makeGrid :: [[(Bool, Widget (IO ()))]] -> Property IO Grid.Model -> IO (Widget (IO ()))
 makeGrid rows gridModelP =

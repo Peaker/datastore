@@ -1,6 +1,7 @@
 {-# OPTIONS -O2 -Wall #-}
+{-# LANGUAGE TypeOperators, TemplateHaskell #-}
 
-module Tree(Tree(..), atValueRef, atChildrenRefs,
+module Tree(Tree(..), nodeValueRef, nodeChildrenRefs,
             Data, Ref, makeValueRef, makeNodeRef, makeLeafRef) where
 
 import Control.Monad(liftM2)
@@ -10,15 +11,15 @@ import Db(Db)
 import Data.Binary(Binary(..))
 import qualified Graphics.UI.VtyWidgets.Grid as Grid
 import qualified Graphics.UI.VtyWidgets.TextEdit as TextEdit
+import Data.Record.Label((:->), mkLabels, label)
 
 data Tree a = Node {
-  nodeValueRef :: DBRef a,
-  nodeChildrenRefs :: [DBRef (Tree a)]
+  _nodeValueRef :: DBRef a,
+  _nodeChildrenRefs :: [DBRef (Tree a)]
   }
-atValueRef :: (DBRef a -> DBRef a) -> Tree a -> Tree a
-atValueRef f (Node valueRef childrenRefs) = Node (f valueRef) childrenRefs
-atChildrenRefs :: ([DBRef (Tree a)] -> [DBRef (Tree a)]) -> Tree a -> Tree a
-atChildrenRefs f (Node valueRef childrenRefs) = Node valueRef (f childrenRefs)
+$(mkLabels [''Tree])
+nodeValueRef :: Tree a :-> DBRef a
+nodeChildrenRefs :: Tree a :-> [DBRef (Tree a)]
 
 instance Binary (Tree a) where
   put (Node value children) = put value >> put children
