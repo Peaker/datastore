@@ -1,6 +1,7 @@
-* Edit a tree. Support:
-  * Adding children
-  * Removing children
+* Make the tree editor useful:
+  * Folding, max-depth under which you jump to a new root
+
+  * Revision control
 
 * Interpret Tree as Code!
   * Scheme / Untyped Haskell
@@ -11,52 +12,3 @@
   * Full type inference
   * Back-refs from all uses: When "x" changes its type, re-test all
     uses of "x" for validity, if invalid, insert tchorim
-
-* Cairo: Image rendering library
-  * Need keys
-  * Gtk+ without Gtk+ widgets.. Goal nefesh
-
-* Web server renders via sending commands to a pre-programmed
-  Javascript/Ajax renderer:
-
-  * JS as an X server (Render/input)
-    * Visual GUI
-
-
-* Later: Use ContainerDBRef:
-
--- Allows indexing by any Hashable type, guarantees correct type
--- lookup/setting, but cannot guarantee lookup success
-
-import Data.Hash(Hashable, hash, Hash(asWord64))
-import Data.Binary.Put(runPut)
-
-instance Hashable ByteString where
-  hash = hash . unpack
-
-hashToBS :: Hash -> SBS.ByteString
-hashToBS = runPut . putByteString . asWord64
-
-hashBS :: Hashable a => a -> SBS.ByteString
-hashBS = hashToBS . hash
-
-------------------------------------------------
-
-data ContainerDBRef a = ContainerDBRef {
-  containerBaseGuid :: Guid
-  }
-
-instance Binary (ContainerDBRef a) where
-  get = fmap ContainerDBRef (getByteString guidLen)
-  put = putByteString . containerBaseGuid
-
-newContainer :: IO (ContainerDBRef a)
-newContainer = ContainerDBRef `fmap` randomBS guidLen
-
-lookupContainerAt :: (Binary a, Hashable b) => ObjectStore -> ContainerDBRef a -> b -> IO (Maybe a)
-lookupContainerAt os (ContainerDBRef key) component =
-  (fmap . fmap) decodeS . Db.lookup os . hashBS $ (key, component)
-
-setContainerAt :: (Binary a, Hashable b) => ObjectStore -> ContainerDBRef a -> b -> a -> IO ()
-setContainerAt os (ContainerDBRef key) component x =
-  Db.set os (hashBS (key, component)) . encodeS $ x
