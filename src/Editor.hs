@@ -7,7 +7,7 @@ import Prelude hiding ((.))
 import Control.Category((.))
 import qualified Db
 import Db(Db)
-import Data.Monoid(mempty, mappend)
+import Data.Monoid(mappend)
 import Data.ByteString.UTF8(fromString)
 import Data.Vector.Vector2(Vector2(..))
 import qualified Graphics.Vty as Vty
@@ -60,20 +60,20 @@ makeTreeEdit db treeRef = do
                (valueProp `composeLabel` second)
   let childrenRefs = Label.get Tree.nodeChildrenRefs treeNode
   treeEdits <- mapM (makeTreeEdit db) childrenRefs
-  let innerItems = map (return . (,) True) treeEdits
+  let innerItems = map return treeEdits
       innerGridModelP = valueProp `composeLabel` (second . first)
-  Vector2 _ curChildIndex <- Grid.getCursor innerItems `fmap` Property.get innerGridModelP
-  innerGridItem <- if null treeEdits then
-                     return (False, mempty)
-                   else
-                     ((,) True .
-                      Widget.atDisplay (indent 5) .
-                      Widget.atKeymap
-                      (`mappend` Keymap.simpleton "Del node"
-                                 delChildKey (delChild curChildIndex)))
-                     `fmap`
-                     makeGrid innerItems innerGridModelP
-  let outerItems = [[(True, valueEdit)]] ++
+  Vector2 _ curChildIndex <- Grid.modelCursor `fmap` Property.get innerGridModelP
+  let addDelNodeKeymap =
+        if curChildIndex < length treeEdits
+        then Widget.atKeymap
+             (`mappend` Keymap.simpleton "Del node"
+              delChildKey (delChild curChildIndex))
+        else id
+  innerGridItem <- (Widget.atDisplay (indent 5) .
+                    addDelNodeKeymap)
+                   `fmap`
+                   makeGrid innerItems innerGridModelP
+  let outerItems = [[valueEdit]] ++
                    [[innerGridItem]]
   outerGrid <- Widget.atKeymap
                (`mappend` Keymap.simpleton "New child node"
@@ -91,7 +91,7 @@ makeTreeEdit db treeRef = do
 remove :: Int -> [a] -> [a]
 remove n xs = take n xs ++ drop (n+1) xs
 
-makeGrid :: [[(Bool, Widget (IO ()))]] -> Property IO Grid.Model -> IO (Widget (IO ()))
+makeGrid :: [[Widget (IO ())]] -> Property IO Grid.Model -> IO (Widget (IO ()))
 makeGrid rows gridModelP =
   fmap (Grid.make (Property.set gridModelP) rows) $
   Property.get gridModelP
