@@ -12,6 +12,8 @@ data Property m a = Property {
   set :: a -> m ()
   }
 
+infixl 5 `composeLabel`
+
 composeLabel :: Monad m => Property m a -> (a :-> b) -> Property m b
 composeLabel (Property getter setter) label = Property getter' setter'
   where

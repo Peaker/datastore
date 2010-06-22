@@ -77,14 +77,17 @@ makeTreeEdit db treeRef = do
                    [[innerGridItem]]
   outerGrid <- Widget.atKeymap
                (`mappend` Keymap.simpleton "New child node"
-                          newChildKey addNewChild)
+                          newChildKey (addNewChild valueProp))
                `fmap`
                makeGrid outerItems (valueProp `composeLabel` (first . first))
   return outerGrid
   where
-    addNewChild = do
-      newRef <- Tree.makeLeafRef db "<new node>"
+    addNewChild valueProp = do
+      newRef <- Tree.makeLeafRef db "NEW_NODE"
       Ref.pureModify db treeRef . Label.mod Tree.nodeChildrenRefs $ (++ [newRef])
+      Property.set (valueProp `composeLabel` first . first) $ Grid.Model (Vector2 0 1)
+      childrenCount <- (length . Label.get Tree.nodeChildrenRefs) `fmap` Ref.read db treeRef
+      Property.set (valueProp `composeLabel` second . first) $ Grid.Model (Vector2 0 (childrenCount-1))
     delChild index =
       Ref.pureModify db treeRef . Label.mod Tree.nodeChildrenRefs $ remove index
 

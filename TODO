@@ -1,3 +1,6 @@
+* Clean up the Editor code to consistently use properties/labels or
+  refs, and not a mishmash
+
 * Make the tree editor useful:
   * Folding, max-depth under which you jump to a new root
 
