@@ -3,6 +3,12 @@
 
   * Revision control
 
+* Maybe need 'overwrite selection' in TextEdit so that I can have the
+  "<new node>" be overwritten when you go on it?
+
+  * Can I somehow show "<empty>" for empty text edits in a way that
+    considers it a single char that's overwritten by any operation?
+
 * Interpret Tree as Code!
   * Scheme / Untyped Haskell
   * Run as you edit
