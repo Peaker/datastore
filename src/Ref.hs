@@ -2,7 +2,7 @@
 {-# OPTIONS -fno-warn-orphans #-}
 
 module Ref
-    (DBRef, new, read, write, modify, pureModify, property)
+    (DBRef, new, read, write, modify, pureModify, accessor, follow)
 where
 
 import Prelude hiding (read)
@@ -11,7 +11,9 @@ import qualified Db
 import Db(Db)
 
 import Property(Property(..))
-import Control.Monad((<=<))
+import qualified Property
+import Accessor(Accessor(..))
+import Control.Monad((<=<), liftM)
 import qualified Data.ByteString as SBS
 import Data.Binary(Binary(..))
 import Data.Binary.Get(getByteString)
@@ -29,12 +31,20 @@ type Guid = SBS.ByteString
 property :: Binary a => Db -> DBRef a -> Property IO a
 property db ref = Property (read db ref) (write db ref)
 
+accessor :: Binary a => Db -> DBRef a -> Accessor a
+accessor db = Accessor db . property db
+
+-- Convenience method (Doesn't use the setter, only the getter):
+follow :: Binary a => Accessor (DBRef a) -> IO (Accessor a)
+follow (Accessor db prop) =
+  accessor db `liftM` Property.get prop
+
 writeKey :: Binary a => Db -> SBS.ByteString -> a -> IO (DBRef a)
 writeKey db key x = do
   Db.set db key x
   return (DBRef key)
 
-data DBRef a = DBRef {
+newtype DBRef a = DBRef {
   dbrefGuid :: Guid
   }
 

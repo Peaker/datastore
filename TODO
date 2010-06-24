@@ -1,6 +1,18 @@
 * Clean up the Editor code to consistently use properties/labels or
   refs, and not a mishmash
 
+  * Property is generic, cannot know the Db so it cannot convert:
+
+    Property IO (DBRef a) -> Property IO a
+
+    * Maybe wrap Ref (still needed for Binary instance) with Accessor
+      instead of Property, that represents ability to read/write to
+      that DB slot?  Also composable with pure labels, but can convert:
+
+      Accessor (DBRef a) -> Accessor a
+
+    * Everyone can use Accessor instead of DBRef for everything
+
 * Make the tree editor useful:
   * Folding, max-depth under which you jump to a new root
 

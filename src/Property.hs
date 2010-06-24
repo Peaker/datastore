@@ -1,9 +1,10 @@
 {-# OPTIONS -O2 -Wall #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Property(Property(..), composeLabel) where
+module Property(Property(..), composeLabel, compose,
+                modify, modify_, pureModify) where
 
-import Control.Monad(liftM)
+import Control.Monad(liftM, (>=>))
 import Data.Record.Label((:->))
 import qualified Data.Record.Label as Label
 
@@ -12,10 +13,27 @@ data Property m a = Property {
   set :: a -> m ()
   }
 
-infixl 5 `composeLabel`
+modify :: Monad m => Property m a -> (a -> m (a, b)) -> m b
+modify prop f = do
+  (newValue, res) <- f =<< get prop
+  set prop newValue
+  return res
 
-composeLabel :: Monad m => Property m a -> (a :-> b) -> Property m b
-composeLabel (Property getter setter) label = Property getter' setter'
+modify_ :: Monad m => Property m a -> (a -> m a) -> m ()
+modify_ prop f = set prop =<< f =<< get prop
+
+pureModify :: Monad m => Property m a -> (a -> a) -> m ()
+pureModify prop = modify_ prop . (return .)
+
+inFields :: (m a -> m b) -> ((a -> m ()) -> b -> m ()) -> Property m a -> Property m b
+inFields onGet onSet (Property getter setter) = Property (onGet getter) (onSet setter)
+
+compose :: Monad m => (a -> m b) -> (b -> m a) -> Property m a -> Property m b
+compose aToB bToA = inFields (>>= aToB) (bToA >=>)
+
+infixl 5 `composeLabel`
+composeLabel :: Monad m => (a :-> b) -> Property m a -> Property m b
+composeLabel label (Property getter setter) = Property getter' setter'
   where
     getter' = Label.get label `liftM` getter
     setter' x = setter . Label.set label x =<< getter
