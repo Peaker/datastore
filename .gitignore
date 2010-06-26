@@ -3,3 +3,4 @@
 *.o
 Editor
 makedb
+dist/
