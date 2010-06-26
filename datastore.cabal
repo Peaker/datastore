@@ -26,6 +26,7 @@ Executable Editor
                        ByteStringUtils,
                        Property,
                        Accessor,
+                       Config,
                        Data.Record.Label.Tuple
   ghc-options: -O2 -Wall
   main-is: Editor.hs

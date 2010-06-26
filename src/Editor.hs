@@ -5,8 +5,14 @@ module Main (main) where
 
 import Prelude hiding ((.))
 import Control.Category((.))
+import qualified Config
 import qualified Db
 import Db(Db)
+import qualified Ref
+import Accessor(Accessor(..), composeLabel)
+import qualified Accessor
+import qualified Tree
+import Data.Record.Label.Tuple(first, second)
 import Data.Monoid(mappend)
 import Data.ByteString.UTF8(fromString)
 import Data.Vector.Vector2(Vector2(..))
@@ -16,32 +22,11 @@ import qualified Graphics.UI.VtyWidgets.TextEdit as TextEdit
 import qualified Graphics.UI.VtyWidgets.Grid as Grid
 import qualified Graphics.UI.VtyWidgets.Widget as Widget
 import qualified Graphics.UI.VtyWidgets.Keymap as Keymap
-import Graphics.UI.VtyWidgets.Keymap(ModKey)
 import Graphics.UI.VtyWidgets.Display(Display)
 import qualified Graphics.UI.VtyWidgets.SizeRange as SizeRange
 import qualified Graphics.UI.VtyWidgets.Spacer as Spacer
 import Graphics.UI.VtyWidgets.Widget(Widget)
 import Graphics.UI.VtyWidgets.Run(runWidgetLoop)
-import qualified Ref
-import Accessor(Accessor(..), composeLabel)
-import qualified Accessor
-import qualified Tree
-import Data.Record.Label.Tuple(first, second)
-
-quitKey :: ModKey
-quitKey = ([Vty.MCtrl], Vty.KASCII 'q')
-
-rootKey :: ModKey
-rootKey = ([Vty.MCtrl], Vty.KASCII 'r')
-
-appendChildKey :: ModKey
-appendChildKey = ([Vty.MCtrl], Vty.KASCII 'n')
-
-delChildKey :: ModKey
-delChildKey = ([Vty.MCtrl], Vty.KASCII 'o')
-
-setViewRootKey :: ModKey
-setViewRootKey = ([Vty.MCtrl], Vty.KASCII 'g')
 
 setViewRoot :: Db -> Tree.Ref -> IO ()
 setViewRoot db ref = Db.set db (fromString "viewroot") ref
@@ -55,9 +40,9 @@ makeWidget db = do
     (quitKeymap `mappend` goRootKeymap) $
     treeEdit
   where
-    quitKeymap = Keymap.simpleton "Quit" quitKey . ioError . userError $ "Quit"
+    quitKeymap = Keymap.simpleton "Quit" Config.quitKey . ioError . userError $ "Quit"
     goRootKeymap =
-      Keymap.simpleton "Go to root" rootKey $ do
+      Keymap.simpleton "Go to root" Config.rootKey $ do
         Just rootRef <- Db.lookup db (fromString "root")
         Db.set db (fromString "viewroot") (rootRef :: Tree.Ref)
 
@@ -103,11 +88,11 @@ makeTreeEdit db treeRef = do
         getChildIndex = (Vector2.snd . Grid.modelCursor) `fmap`
                         Accessor.get childrenGridModelA
         addNodeKeymap = Keymap.simpleton "Append child node"
-                        appendChildKey appendChild
+                        Config.appendChildKey appendChild
         delNodeKeymap = (Keymap.simpleton "Del node"
-                         delChildKey . delChild) `fmap` getChildIndex
+                         Config.delChildKey . delChild) `fmap` getChildIndex
         setRootKeymap =
-          Keymap.simpleton "Set root element" setViewRootKey $ do
+          Keymap.simpleton "Set root element" Config.setViewRootKey $ do
             print "Setting view root!"
             setViewRoot db treeRef
         yGridCursor = Grid.Model . Vector2 0
