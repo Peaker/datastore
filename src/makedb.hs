@@ -7,7 +7,7 @@ import Data.ByteString.UTF8(fromString)
 import Tree(Ref, makeLeafRef, makeNodeRef)
 
 main :: IO ()
-main = do
+main =
   Db.withDb "/tmp/db.db" $ \db -> do
     childrenRefs <- mapM (makeLeafRef db . show) [1..10 :: Int]
     rootRef <- makeNodeRef db "tree root value" childrenRefs

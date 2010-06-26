@@ -59,7 +59,7 @@ new db x = do
   writeKey db key x
 
 write :: Binary a => Db -> DBRef a -> a -> IO ()
-write db = do
+write db =
   Db.set db . dbrefGuid
 
 read :: Binary a => Db -> DBRef a -> IO a

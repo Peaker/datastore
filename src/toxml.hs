@@ -23,7 +23,7 @@ writeTreeXml db outFile depth ref = do
   hPutStrLn outFile . indent $ "</" ++ text ++ ">"
 
 main :: IO ()
-main = do
+main =
   Db.withDb "/tmp/db.db" $ \db -> do
     Just root <- Db.lookup db (fromString "root")
                  -- root :: Tree.Ref

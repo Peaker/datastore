@@ -33,7 +33,7 @@ import Graphics.UI.VtyWidgets.Widget(Widget)
 import Graphics.UI.VtyWidgets.Run(runWidgetLoop)
 
 setViewRoot :: Db -> Tree.Ref -> IO ()
-setViewRoot db ref = Db.set db (fromString "viewroot") ref
+setViewRoot db = Db.set db (fromString "viewroot")
 
 indent :: Int -> Display a -> Display a
 indent width disp = Grid.makeView [[Spacer.make (SizeRange.fixedSize (Vector2 width 0)), disp]]
@@ -143,10 +143,9 @@ main = do
       treeEdit <- makeTreeEdit db clipboard rootRef
       let treeEditWithKeys =
             Widget.strongerKeys
-            (quitKeymap `mappend` goRootKeymap) $
+            (quitKeymap `mappend` goRootKeymap)
             treeEdit
-      treeEditWithKeymapView <- overlayKeymapView treeEditWithKeys
-      return treeEditWithKeymapView
+      overlayKeymapView treeEditWithKeys
       where
         quitKeymap = Keymap.simpleton "Quit" Config.quitKey . ioError . userError $ "Quit"
         goRootKeymap =

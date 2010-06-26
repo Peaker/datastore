@@ -47,7 +47,7 @@ withCursor :: Db -> (Cursor -> IO a) -> IO a
 withCursor db = Berkeley.db_withCursor [] (dbBerkeley db) Nothing
 
 nextKeyBS :: Cursor -> IO (Maybe (ByteString, ByteString))
-nextKeyBS cursor = Berkeley.dbCursor_get [Berkeley.DB_NEXT] cursor
+nextKeyBS = Berkeley.dbCursor_get [Berkeley.DB_NEXT]
 
 nextKey :: Binary a => Cursor -> IO (Maybe (ByteString, a))
 nextKey cursor = (fmap . fmap . second) decodeS (nextKeyBS cursor)
@@ -59,13 +59,13 @@ lookup :: Binary a => Db -> ByteString -> IO (Maybe a)
 lookup db key = (fmap . fmap) decodeS (lookupBS db key)
 
 lookupBS :: Db -> ByteString -> IO (Maybe ByteString)
-lookupBS db key = Berkeley.db_get [] (dbBerkeley db) Nothing key
+lookupBS db = Berkeley.db_get [] (dbBerkeley db) Nothing
 
 set :: Binary a => Db -> ByteString -> a -> IO ()
 set db key = setBS db key . encodeS
 
 setBS :: Db -> ByteString -> ByteString -> IO ()
-setBS db key value = Berkeley.db_put [] (dbBerkeley db) Nothing key value
+setBS db = Berkeley.db_put [] (dbBerkeley db) Nothing
 
 modifyBS :: Db -> ByteString -> (Maybe ByteString -> ByteString) -> IO ()
 modifyBS db key f = setBS db key =<< f `fmap` lookupBS db key
@@ -74,4 +74,4 @@ modify :: Binary a => Db -> ByteString -> (Maybe a -> a) -> IO ()
 modify db key f = set db key =<< f `fmap` lookup db key
 
 del :: Db -> ByteString -> IO ()
-del db key = Berkeley.db_del [] (dbBerkeley db) Nothing key
+del db = Berkeley.db_del [] (dbBerkeley db) Nothing
