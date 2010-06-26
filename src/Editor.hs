@@ -14,11 +14,14 @@ import qualified Accessor
 import qualified Tree
 import Data.Record.Label.Tuple(first, second)
 import Data.Monoid(mempty, mappend)
-import Data.Maybe(isNothing)
+import Data.Maybe(isNothing, fromMaybe)
 import Data.ByteString.UTF8(fromString)
 import Data.Vector.Vector2(Vector2(..))
 import qualified Data.Vector.Vector2 as Vector2
+import Data.IORef(newIORef, readIORef, writeIORef)
 import qualified Graphics.Vty as Vty
+import qualified Graphics.UI.VtyWidgets.Overlay as Overlay
+import qualified Graphics.UI.VtyWidgets.TableGrid as TableGrid
 import qualified Graphics.UI.VtyWidgets.TextEdit as TextEdit
 import qualified Graphics.UI.VtyWidgets.Grid as Grid
 import qualified Graphics.UI.VtyWidgets.Widget as Widget
@@ -31,22 +34,6 @@ import Graphics.UI.VtyWidgets.Run(runWidgetLoop)
 
 setViewRoot :: Db -> Tree.Ref -> IO ()
 setViewRoot db ref = Db.set db (fromString "viewroot") ref
-
-makeWidget :: Db -> IO (Widget (IO ()))
-makeWidget db = do
-  clipboard <- Db.lookup db (fromString "clipboard")
-  Just rootRef <- Db.lookup db (fromString "viewroot")
-  treeEdit <- makeTreeEdit db clipboard rootRef
-  return .
-    Widget.strongerKeys
-    (quitKeymap `mappend` goRootKeymap) $
-    treeEdit
-  where
-    quitKeymap = Keymap.simpleton "Quit" Config.quitKey . ioError . userError $ "Quit"
-    goRootKeymap =
-      Keymap.simpleton "Go to root" Config.rootKey $ do
-        Just rootRef <- Db.lookup db (fromString "root")
-        Db.set db (fromString "viewroot") (rootRef :: Tree.Ref)
 
 indent :: Int -> Display a -> Display a
 indent width disp = Grid.makeView [[Spacer.make (SizeRange.fixedSize (Vector2 width 0)), disp]]
@@ -146,4 +133,39 @@ makeTextEdit maxLines defAttr editAttr textEditModelA =
   Accessor.get textEditModelA
 
 main :: IO ()
-main = Db.withDb "/tmp/db.db" $ runWidgetLoop . const . makeWidget
+main = do
+  overlayModelRef <- newIORef $ Overlay.initModel True
+  Db.withDb "/tmp/db.db" $ \db -> runWidgetLoop $ makeWidget overlayModelRef db
+  where
+    keymapView keymap = TableGrid.makeKeymapView keymap (keyAttr, 10) (valueAttr, 30)
+    keyAttr   = Vty.def_attr
+                `Vty.with_fore_color` Vty.green
+                `Vty.with_back_color` Vty.blue
+    valueAttr = Vty.def_attr
+                `Vty.with_fore_color` Vty.red
+                `Vty.with_back_color` Vty.blue
+                `Vty.with_style` Vty.bold
+    makeWidget overlayModelRef db size = do
+      clipboard <- Db.lookup db (fromString "clipboard")
+      Just rootRef <- Db.lookup db (fromString "viewroot")
+      treeEdit <- makeTreeEdit db clipboard rootRef
+      let treeEditWithKeys =
+            Widget.strongerKeys
+            (quitKeymap `mappend` goRootKeymap) $
+            treeEdit
+      treeEditWithKeymapView <- overlayKeymapView treeEditWithKeys
+      return treeEditWithKeymapView
+      where
+        quitKeymap = Keymap.simpleton "Quit" Config.quitKey . ioError . userError $ "Quit"
+        goRootKeymap =
+          Keymap.simpleton "Go to root" Config.rootKey $ do
+            Just rootRef <- Db.lookup db (fromString "root")
+            Db.set db (fromString "viewroot") (rootRef :: Tree.Ref)
+        overlayKeymapView w =
+          Overlay.widget
+          ("Keybindings: show", ([], Vty.KFun 6))
+          ("Keybindings: hide", ([], Vty.KFun 6))
+          (Widget.simpleDisplay . keymapView . fromMaybe mempty $
+           Widget.keymap w size)
+          (writeIORef overlayModelRef) w
+          `fmap` readIORef overlayModelRef
