@@ -94,8 +94,7 @@ makeTreeEdit db clipboard treeRef = do
         delNodeKeymap = fromMaybe mempty .
                         fmap (Keymap.simpleton "Del node" Config.delChildKey . delChild)
         setRootKeymap =
-          Keymap.simpleton "Set root element" Config.setViewRootKey $ do
-            print "Setting view root!"
+          Keymap.simpleton "Set root element" Config.setViewRootKey $
             setViewRoot db treeRef
         yGridCursor = Grid.Model . Vector2 0
         appendNewChild = do
