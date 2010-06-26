@@ -38,10 +38,6 @@ setViewRoot db ref = Db.set db (fromString "viewroot") ref
 indent :: Int -> Display a -> Display a
 indent width disp = Grid.makeView [[Spacer.make (SizeRange.fixedSize (Vector2 width 0)), disp]]
 
-applyIf :: Bool -> (a -> a) -> a -> a
-applyIf True  f = f
-applyIf False _ = id
-
 makeTreeEdit :: Db -> Maybe Tree.Ref -> Tree.Ref -> IO (Widget (IO ()))
 makeTreeEdit db clipboard treeRef = do
   let treeA = Ref.accessor db treeRef
@@ -62,20 +58,14 @@ makeTreeEdit db clipboard treeRef = do
                      TextEdit.defaultAttr TextEdit.editingAttr
                      valueTextEditModelA
         childItems <- mapM (makeTreeEdit db clipboard) =<< Accessor.get childrenRefsA
-        curChildIndex <- getChildIndex
+        curChildIndex <- getChildIndex (length childItems)
         childGrid <- makeGrid (map (: []) childItems) childrenGridModelA
-        delKeymap <- delNodeKeymap
-        cutKeymap <- cutNodeKeymap
-        let
-          childGrid' = applyIf (curChildIndex < length childItems)
-                       (Widget.strongerKeys delKeymap .
-                        -- Only allow cutting if the clipboard is
-                        -- empty to not overwrite it...  Maybe have a
-                        -- clipboard ring later?
-                        applyIf (isNothing clipboard)
-                        (Widget.strongerKeys cutKeymap)) .
-                       Widget.atDisplay (indent 5) $
-                       childGrid
+        let childGrid' = (Widget.strongerKeys $
+                          mappend
+                          delNodeKeymap cutNodeKeymap
+                          curChildIndex) .
+                         Widget.atDisplay (indent 5) $
+                         childGrid
         outerGrid <- makeGrid [[valueEdit], [childGrid']] outerGridModelA
         return .
           Widget.strongerKeys (pasteKeymap `mappend`
@@ -83,8 +73,11 @@ makeTreeEdit db clipboard treeRef = do
                                setRootKeymap) $
           outerGrid
       where
-        getChildIndex = (Vector2.snd . Grid.modelCursor) `fmap`
-                        Accessor.get childrenGridModelA
+        validateIndex count index
+          | 0 <= index && index < count = Just index
+          | otherwise = Nothing
+        getChildIndex count = (validateIndex count . Vector2.snd . Grid.modelCursor) `fmap`
+                              Accessor.get childrenGridModelA
         pasteKeymap =
           case clipboard of
             Nothing -> mempty
@@ -94,10 +87,12 @@ makeTreeEdit db clipboard treeRef = do
                 Db.del db (fromString "clipboard")
         appendNewNodeKeymap = Keymap.simpleton "Append new child node"
                               Config.appendChildKey appendNewChild
-        cutNodeKeymap = (Keymap.simpleton "Cut node"
-                         Config.cutKey . cutChild) `fmap` getChildIndex
-        delNodeKeymap = (Keymap.simpleton "Del node"
-                         Config.delChildKey . delChild) `fmap` getChildIndex
+        cutNodeKeymap = if isNothing clipboard
+                        then fromMaybe mempty .
+                             fmap (Keymap.simpleton "Cut node" Config.cutKey . cutChild)
+                        else mempty
+        delNodeKeymap = fromMaybe mempty .
+                        fmap (Keymap.simpleton "Del node" Config.delChildKey . delChild)
         setRootKeymap =
           Keymap.simpleton "Set root element" Config.setViewRootKey $ do
             print "Setting view root!"
