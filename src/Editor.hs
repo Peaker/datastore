@@ -13,7 +13,8 @@ import Accessor(Accessor(..), composeLabel)
 import qualified Accessor
 import qualified Tree
 import Data.Record.Label.Tuple(first, second)
-import Data.Monoid(mappend)
+import Data.Monoid(mempty, mappend)
+import Data.Maybe(isNothing)
 import Data.ByteString.UTF8(fromString)
 import Data.Vector.Vector2(Vector2(..))
 import qualified Data.Vector.Vector2 as Vector2
@@ -33,8 +34,9 @@ setViewRoot db ref = Db.set db (fromString "viewroot") ref
 
 makeWidget :: Db -> IO (Widget (IO ()))
 makeWidget db = do
+  clipboard <- Db.lookup db (fromString "clipboard")
   Just rootRef <- Db.lookup db (fromString "viewroot")
-  treeEdit <- makeTreeEdit db rootRef
+  treeEdit <- makeTreeEdit db clipboard rootRef
   return .
     Widget.strongerKeys
     (quitKeymap `mappend` goRootKeymap) $
@@ -53,8 +55,8 @@ applyIf :: Bool -> (a -> a) -> a -> a
 applyIf True  f = f
 applyIf False _ = id
 
-makeTreeEdit :: Db -> Tree.Ref -> IO (Widget (IO ()))
-makeTreeEdit db treeRef = do
+makeTreeEdit :: Db -> Maybe Tree.Ref -> Tree.Ref -> IO (Widget (IO ()))
+makeTreeEdit db clipboard treeRef = do
   let treeA = Ref.accessor db treeRef
   valueA <- Ref.follow $ Tree.nodeValueRef `composeLabel` treeA
   makeTreeEdit'
@@ -72,23 +74,41 @@ makeTreeEdit db treeRef = do
         valueEdit <- makeTextEdit 2
                      TextEdit.defaultAttr TextEdit.editingAttr
                      valueTextEditModelA
-        childItems <- mapM (makeTreeEdit db) =<< Accessor.get childrenRefsA
+        childItems <- mapM (makeTreeEdit db clipboard) =<< Accessor.get childrenRefsA
         curChildIndex <- getChildIndex
         childGrid <- makeGrid (map (: []) childItems) childrenGridModelA
         delKeymap <- delNodeKeymap
-        let childGrid' = applyIf (curChildIndex < length childItems)
-                         (Widget.strongerKeys delKeymap) .
-                         Widget.atDisplay (indent 5) $
-                         childGrid
+        cutKeymap <- cutNodeKeymap
+        let
+          childGrid' = applyIf (curChildIndex < length childItems)
+                       (Widget.strongerKeys delKeymap .
+                        -- Only allow cutting if the clipboard is
+                        -- empty to not overwrite it...  Maybe have a
+                        -- clipboard ring later?
+                        applyIf (isNothing clipboard)
+                        (Widget.strongerKeys cutKeymap)) .
+                       Widget.atDisplay (indent 5) $
+                       childGrid
         outerGrid <- makeGrid [[valueEdit], [childGrid']] outerGridModelA
         return .
-          Widget.strongerKeys (addNodeKeymap `mappend` setRootKeymap) $
+          Widget.strongerKeys (pasteKeymap `mappend`
+                               appendNewNodeKeymap `mappend`
+                               setRootKeymap) $
           outerGrid
       where
         getChildIndex = (Vector2.snd . Grid.modelCursor) `fmap`
                         Accessor.get childrenGridModelA
-        addNodeKeymap = Keymap.simpleton "Append child node"
-                        Config.appendChildKey appendChild
+        pasteKeymap =
+          case clipboard of
+            Nothing -> mempty
+            Just cbChildRef ->
+              Keymap.simpleton "Paste" Config.pasteKey $ do
+                appendChild cbChildRef
+                Db.del db (fromString "clipboard")
+        appendNewNodeKeymap = Keymap.simpleton "Append new child node"
+                              Config.appendChildKey appendNewChild
+        cutNodeKeymap = (Keymap.simpleton "Cut node"
+                         Config.cutKey . cutChild) `fmap` getChildIndex
         delNodeKeymap = (Keymap.simpleton "Del node"
                          Config.delChildKey . delChild) `fmap` getChildIndex
         setRootKeymap =
@@ -96,17 +116,23 @@ makeTreeEdit db treeRef = do
             print "Setting view root!"
             setViewRoot db treeRef
         yGridCursor = Grid.Model . Vector2 0
-        appendChild = do
+        appendNewChild = do
           newRef <- Tree.makeLeafRef db "NEW_NODE"
+          appendChild newRef
+        appendChild newRef = do
           Accessor.pureModify childrenRefsA (++ [newRef])
           childrenRefs <- Accessor.get childrenRefsA
           Accessor.set outerGridModelA $ yGridCursor 1
           Accessor.set childrenGridModelA $ yGridCursor (length childrenRefs - 1)
+        cutChild index = do
+          childrenRefs <- Accessor.get childrenRefsA
+          Db.set db (fromString "clipboard") $ childrenRefs !! index
+          delChild index
         delChild index =
-          Accessor.pureModify childrenRefsA $ remove index
+          Accessor.pureModify childrenRefsA $ removeAt index
 
-remove :: Int -> [a] -> [a]
-remove n xs = take n xs ++ drop (n+1) xs
+removeAt :: Int -> [a] -> [a]
+removeAt n xs = take n xs ++ drop (n+1) xs
 
 makeGrid :: [[Widget (IO ())]] -> Accessor Grid.Model -> IO (Widget (IO ()))
 makeGrid rows gridModelA =

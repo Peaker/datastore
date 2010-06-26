@@ -47,6 +47,7 @@ writeKey db key x = do
 newtype DBRef a = DBRef {
   dbrefGuid :: Guid
   }
+  deriving (Eq, Ord)
 
 instance Binary (DBRef a) where
   get = DBRef `fmap` getByteString guidLen

@@ -3,7 +3,7 @@
 module Db
     (Db, withDb,
      lookupBS, setBS,
-     lookup,   set,
+     lookup,   set,  del,
      withCursor,
      nextKeyBS, nextKey)
 where
@@ -65,3 +65,6 @@ set db key = setBS db key . encodeS
 
 setBS :: Db -> ByteString -> ByteString -> IO ()
 setBS db key value = Berkeley.db_put [] (dbBerkeley db) Nothing key value
+
+del :: Db -> ByteString -> IO ()
+del db key = Berkeley.db_del [] (dbBerkeley db) Nothing key
