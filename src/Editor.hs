@@ -14,7 +14,7 @@ import qualified Accessor
 import qualified Tree
 import Data.Record.Label.Tuple(first, second)
 import Data.Monoid(mempty, mappend)
-import Data.Maybe(isNothing, fromMaybe)
+import Data.Maybe(fromMaybe)
 import Data.ByteString.UTF8(fromString)
 import Data.Vector.Vector2(Vector2(..))
 import qualified Data.Vector.Vector2 as Vector2
@@ -38,7 +38,7 @@ setViewRoot db ref = Db.set db (fromString "viewroot") ref
 indent :: Int -> Display a -> Display a
 indent width disp = Grid.makeView [[Spacer.make (SizeRange.fixedSize (Vector2 width 0)), disp]]
 
-makeTreeEdit :: Db -> Maybe Tree.Ref -> Tree.Ref -> IO (Widget (IO ()))
+makeTreeEdit :: Db -> [Tree.Ref] -> Tree.Ref -> IO (Widget (IO ()))
 makeTreeEdit db clipboard treeRef = do
   let treeA = Ref.accessor db treeRef
   valueA <- Ref.follow $ Tree.nodeValueRef `composeLabel` treeA
@@ -80,17 +80,15 @@ makeTreeEdit db clipboard treeRef = do
                               Accessor.get childrenGridModelA
         pasteKeymap =
           case clipboard of
-            Nothing -> mempty
-            Just cbChildRef ->
+            [] -> mempty
+            (cbChildRef:xs) ->
               Keymap.simpleton "Paste" Config.pasteKey $ do
                 appendChild cbChildRef
-                Db.del db (fromString "clipboard")
+                Db.set db (fromString "clipboard") xs
         appendNewNodeKeymap = Keymap.simpleton "Append new child node"
                               Config.appendChildKey appendNewChild
-        cutNodeKeymap = if isNothing clipboard
-                        then fromMaybe mempty .
-                             fmap (Keymap.simpleton "Cut node" Config.cutKey . cutChild)
-                        else mempty
+        cutNodeKeymap = fromMaybe mempty .
+                        fmap (Keymap.simpleton "Cut node" Config.cutKey . cutChild)
         delNodeKeymap = fromMaybe mempty .
                         fmap (Keymap.simpleton "Del node" Config.delChildKey . delChild)
         setRootKeymap =
@@ -107,7 +105,7 @@ makeTreeEdit db clipboard treeRef = do
           Accessor.set childrenGridModelA $ yGridCursor (length childrenRefs - 1)
         cutChild index = do
           childrenRefs <- Accessor.get childrenRefsA
-          Db.set db (fromString "clipboard") $ childrenRefs !! index
+          Db.modify db (fromString "clipboard") ((childrenRefs !! index :) . fromMaybe [])
           delChild index
         delChild index =
           Accessor.pureModify childrenRefsA $ removeAt index
@@ -140,7 +138,7 @@ main = do
                 `Vty.with_back_color` Vty.blue
                 `Vty.with_style` Vty.bold
     makeWidget overlayModelRef db size = do
-      clipboard <- Db.lookup db (fromString "clipboard")
+      Just clipboard <- Db.lookup db (fromString "clipboard")
       Just rootRef <- Db.lookup db (fromString "viewroot")
       treeEdit <- makeTreeEdit db clipboard rootRef
       let treeEditWithKeys =

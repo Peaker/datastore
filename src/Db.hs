@@ -4,6 +4,7 @@ module Db
     (Db, withDb,
      lookupBS, setBS,
      lookup,   set,  del,
+     modifyBS, modify,
      withCursor,
      nextKeyBS, nextKey)
 where
@@ -65,6 +66,12 @@ set db key = setBS db key . encodeS
 
 setBS :: Db -> ByteString -> ByteString -> IO ()
 setBS db key value = Berkeley.db_put [] (dbBerkeley db) Nothing key value
+
+modifyBS :: Db -> ByteString -> (Maybe ByteString -> ByteString) -> IO ()
+modifyBS db key f = setBS db key =<< f `fmap` lookupBS db key
+
+modify :: Binary a => Db -> ByteString -> (Maybe a -> a) -> IO ()
+modify db key f = set db key =<< f `fmap` lookup db key
 
 del :: Db -> ByteString -> IO ()
 del db key = Berkeley.db_del [] (dbBerkeley db) Nothing key
