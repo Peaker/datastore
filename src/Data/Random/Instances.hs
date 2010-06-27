@@ -1,6 +1,6 @@
 {-# OPTIONS -fno-warn-orphans #-}
 
-module RandInstances()
+module Data.Random.Instances()
 where
 
 import System.Random(Random(..))

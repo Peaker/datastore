@@ -1,12 +1,13 @@
 {-# OPTIONS -O2 -Wall #-}
 {-# LANGUAGE TypeOperators, TemplateHaskell #-}
 
-module Tree(Tree(..), nodeValueRef, nodeChildrenRefs,
-            Data, Ref, makeValueRef, makeNodeRef, makeLeafRef) where
+module Editor.Tree(
+    Tree(..), nodeValueRef, nodeChildrenRefs,
+    Data, Ref, makeValueRef, makeNodeRef, makeLeafRef) where
 
 import Control.Monad(liftM2)
-import Ref(DBRef)
-import qualified Ref
+import Db.Ref(DBRef)
+import qualified Db.Ref as Ref
 import Db(Db)
 import Data.Binary(Binary(..))
 import qualified Graphics.UI.VtyWidgets.Grid as Grid

@@ -1,6 +1,4 @@
 .gitignore
 *.hi
 *.o
-Editor
-makedb
 dist/

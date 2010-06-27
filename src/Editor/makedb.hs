@@ -4,7 +4,7 @@ module Main (main) where
 
 import qualified Db
 import Data.ByteString.UTF8(fromString)
-import Tree(Ref, makeLeafRef, makeNodeRef)
+import Editor.Tree(Ref, makeLeafRef, makeNodeRef)
 
 main :: IO ()
 main =

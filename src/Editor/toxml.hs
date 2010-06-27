@@ -4,8 +4,8 @@ module Main (main) where
 
 import qualified Db
 import Db(Db)
-import qualified Tree
-import qualified Ref
+import qualified Editor.Tree as Tree
+import qualified Db.Ref as Ref
 import qualified Graphics.UI.VtyWidgets.TextEdit as TextEdit
 import System.IO(stdout, hPutStrLn, Handle)
 import Data.ByteString.UTF8(fromString)

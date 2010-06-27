@@ -1,17 +1,17 @@
 {-# OPTIONS -O2 -Wall #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Main (main) where
+module Main(main) where
 
 import Prelude hiding ((.))
 import Control.Category((.))
-import qualified Config
+import qualified Editor.Config as Config
 import qualified Db
 import Db(Db)
-import qualified Ref
-import Accessor(Accessor(..), composeLabel)
-import qualified Accessor
-import qualified Tree
+import qualified Db.Ref as Ref
+import Db.Accessor(Accessor(..), composeLabel)
+import qualified Db.Accessor as Accessor
+import qualified Editor.Tree as Tree
 import Data.Record.Label.Tuple(first, second)
 import Data.Monoid(mempty, mappend)
 import Data.Maybe(fromMaybe)

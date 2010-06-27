@@ -1,8 +1,10 @@
 {-# OPTIONS -O2 -Wall #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Property(Property(..), composeLabel, compose,
-                modify, modify_, pureModify) where
+module Data.Property(
+    Property(..), composeLabel, compose,
+    modify, modify_, pureModify)
+where
 
 import Control.Monad(liftM, (>=>))
 import Data.Record.Label((:->))

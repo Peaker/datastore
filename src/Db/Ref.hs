@@ -1,8 +1,9 @@
 {-# OPTIONS -O2 -Wall #-}
 {-# OPTIONS -fno-warn-orphans #-}
 
-module Ref
-    (DBRef, new, read, write, modify, pureModify, accessor, follow)
+module Db.Ref
+    (DBRef, new, read, write, modify, pureModify,
+     accessor, follow)
 where
 
 import Prelude hiding (read)
@@ -10,16 +11,16 @@ import Prelude hiding (read)
 import qualified Db
 import Db(Db)
 
-import Property(Property(..))
-import qualified Property
-import Accessor(Accessor(..))
+import Data.Property(Property(..))
+import qualified Data.Property as Property
+import Db.Accessor(Accessor(..))
 import Control.Monad((<=<), liftM)
 import qualified Data.ByteString as SBS
 import Data.Binary(Binary(..))
 import Data.Binary.Get(getByteString)
 import Data.Binary.Put(putByteString)
-import ByteStringUtils(randomBS)
-import RandInstances()
+import Data.ByteString.Utils(randomBS)
+import Data.Random.Instances()
 
 guidLen :: Int
 guidLen = 16

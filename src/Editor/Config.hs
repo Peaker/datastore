@@ -1,6 +1,8 @@
 {-# OPTIONS -fno-warn-missing-signatures #-}
 
-module Config(quitKey, rootKey, appendChildKey, delChildKey, setViewRootKey, cutKey, pasteKey) where
+module Editor.Config(
+    quitKey, rootKey, appendChildKey, delChildKey, setViewRootKey, cutKey, pasteKey)
+where
 
 import qualified Graphics.Vty as Vty
 

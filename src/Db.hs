@@ -9,7 +9,7 @@ module Db
      nextKeyBS, nextKey)
 where
 
-import ByteStringUtils(encodeS, decodeS)
+import Data.Binary.Utils(encodeS, decodeS)
 import Control.Arrow(second)
 import Control.Exception(bracket)
 import Prelude hiding (lookup)

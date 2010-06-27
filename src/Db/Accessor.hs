@@ -2,15 +2,15 @@
 {-# OPTIONS -fno-warn-orphans #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Accessor
+module Db.Accessor
     (Accessor(..), get, set, composeLabel,
      modify, modify_, pureModify)
 where
 
 import Db(Db)
 import Data.Record.Label((:->))
-import Property(Property)
-import qualified Property
+import Data.Property(Property)
+import qualified Data.Property as Property
 
 data Accessor a = Accessor {
   accessorDb :: Db,
