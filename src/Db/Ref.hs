@@ -1,5 +1,6 @@
 {-# OPTIONS -O2 -Wall #-}
 {-# OPTIONS -fno-warn-orphans #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Db.Ref
     (DBRef, new, read, write, modify, pureModify,
@@ -8,24 +9,14 @@ where
 
 import Prelude hiding (read)
 
-import qualified Db
-import Db(Db)
-
 import Data.Property(Property(..))
 import qualified Data.Property as Property
-import Db.Accessor(Accessor(..))
+import Data.Binary(Binary)
 import Control.Monad((<=<), liftM)
-import qualified Data.ByteString as SBS
-import Data.Binary(Binary(..))
-import Data.Binary.Get(getByteString)
-import Data.Binary.Put(putByteString)
-import Data.ByteString.Utils(randomBS)
-import Data.Random.Instances()
-
-guidLen :: Int
-guidLen = 16
-
-type Guid = SBS.ByteString
+import qualified Db
+import Db(Db)
+import Db.Guid(Guid(..), newGuid)
+import Db.Accessor(Accessor(..))
 
 -- DBRef:
 
@@ -40,32 +31,28 @@ follow :: Binary a => Accessor (DBRef a) -> IO (Accessor a)
 follow (Accessor db prop) =
   accessor db `liftM` Property.get prop
 
-writeKey :: Binary a => Db -> SBS.ByteString -> a -> IO (DBRef a)
+writeKey :: Binary a => Db -> Guid -> a -> IO (DBRef a)
 writeKey db key x = do
-  Db.set db key x
+  Db.set db (guidBS key) x
   return (DBRef key)
 
 newtype DBRef a = DBRef {
   dbrefGuid :: Guid
   }
-  deriving (Eq, Ord)
-
-instance Binary (DBRef a) where
-  get = DBRef `fmap` getByteString guidLen
-  put = putByteString . dbrefGuid
+  deriving (Eq, Ord, Binary)
 
 new :: Binary a => Db -> a -> IO (DBRef a)
 new db x = do
-  key <- randomBS guidLen
+  key <- newGuid
   writeKey db key x
 
 write :: Binary a => Db -> DBRef a -> a -> IO ()
 write db =
-  Db.set db . dbrefGuid
+  Db.set db . guidBS . dbrefGuid
 
 read :: Binary a => Db -> DBRef a -> IO a
 read db (DBRef key) = do
-  Just bs <- Db.lookup db key
+  Just bs <- Db.lookup db . guidBS $ key
   return bs
 
 modify :: Binary a => Db -> DBRef a -> (a -> IO a) -> IO ()

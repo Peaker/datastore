@@ -24,6 +24,7 @@ Executable Editor
                        Data.Property,
                        Data.Record.Label.Tuple,
                        Db,
+                       Db.Guid,
                        Db.Ref,
                        Db.Accessor,
                        Editor.Tree,

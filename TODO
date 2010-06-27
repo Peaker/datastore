@@ -1,28 +1,3 @@
-* Organize src?
-
-* Revision control:
-
-  * type ObjectValue = ByteString
-
-  * data Change = Change {
-      oldValue :: ObjectValue,
-      newValue :: ObjectValue
-      }
-
-  * Version object:
-
-    versionDepth :: Int
-    versionParent :: DBRef Version
-    versionChanges :: [(ObjectKey, Change)]
-
-  * data View = View {
-      viewVersion :: DBRef Version,
-      viewGUID :: GUID
-      }
-
-    * A mapping (View, ObjectKey) -> ObjectValue
-      * combine :: GUID -> GUID -> GUID
-      * 
 
 * Folding, max-depth under which you jump to a new root
 
