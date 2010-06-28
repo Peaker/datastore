@@ -21,6 +21,11 @@ import Db.Accessor(Accessor(..))
 
 -- DBRef:
 
+newtype DBRef a = DBRef {
+  dbrefGuid :: Guid
+  }
+  deriving (Eq, Ord, Binary)
+
 property :: Binary a => Db -> DBRef a -> Property IO a
 property db ref = Property (read db ref) (write db ref)
 
@@ -32,20 +37,11 @@ follow :: Binary a => Accessor (DBRef a) -> IO (Accessor a)
 follow (Accessor db prop) =
   accessor db `liftM` Property.get prop
 
-writeKey :: Binary a => Db -> Guid -> a -> IO (DBRef a)
-writeKey db key x = do
-  Db.set db (guidBS key) x
-  return (DBRef key)
-
-newtype DBRef a = DBRef {
-  dbrefGuid :: Guid
-  }
-  deriving (Eq, Ord, Binary)
-
 new :: Binary a => Db -> a -> IO (DBRef a)
 new db x = do
   key <- Guid.new
-  writeKey db key x
+  Db.set db (guidBS key) x
+  return (DBRef key)
 
 write :: Binary a => Db -> DBRef a -> a -> IO ()
 write db =
