@@ -3,7 +3,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Db.Ref
-    (DBRef, new, read, write, modify, pureModify,
+    (DBRef, dbrefGuid, new, read, write, modify, pureModify,
      accessor, follow)
 where
 
@@ -15,7 +15,8 @@ import Data.Binary(Binary)
 import Control.Monad((<=<), liftM)
 import qualified Db
 import Db(Db)
-import Db.Guid(Guid(..), newGuid)
+import Db.Guid(Guid(..))
+import qualified Db.Guid as Guid
 import Db.Accessor(Accessor(..))
 
 -- DBRef:
@@ -43,7 +44,7 @@ newtype DBRef a = DBRef {
 
 new :: Binary a => Db -> a -> IO (DBRef a)
 new db x = do
-  key <- newGuid
+  key <- Guid.new
   writeKey db key x
 
 write :: Binary a => Db -> DBRef a -> a -> IO ()

@@ -1,7 +1,7 @@
 {-# OPTIONS -O2 -Wall #-}
 
 module Db.Guid
-    (Guid(..), guidLen, newGuid, xor)
+    (Guid(..), guidLen, new, xor)
 where
 
 import qualified Data.ByteString as SBS
@@ -25,8 +25,8 @@ instance Binary Guid where
 guidLen :: Int
 guidLen = 16
 
-newGuid :: IO Guid
-newGuid = Guid `fmap` randomBS guidLen
+new :: IO Guid
+new = Guid `fmap` randomBS guidLen
 
 xor :: Guid -> Guid -> Guid
 xor = inGuid2 xorBS
