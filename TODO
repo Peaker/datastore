@@ -1,3 +1,18 @@
+* Db.Ref -> Data.IRef
+  New Db.Ref that has: property :: Db -> IRef a -> Property a
+
+* Try to get rid of Accessor and see if it works out. In any case,
+  Accessor would have to hold IRefProperty and not Db. Note I end up
+  passing Db anyway, so not sure Accessor helps at all.
+
+* Pass IRefProperty around manually for now, because using IRefT
+  is problematic...
+
+  * Monad transformers are incompatible with all Haskell libraries
+    that take IO actions, and it's unclear how to fix it, especially
+    when involving any FFI that takes callbacks...  Need to rewrite
+    various functions (withFile/etc) and wrap FFI-callback-code with
+    forkIO's that message the transformer stack thread
 
 * Folding, max-depth under which you jump to a new root
 

@@ -1,7 +1,7 @@
 {-# OPTIONS -O2 -Wall #-}
 
-module Db.Guid
-    (Guid(..), guidLen, new, xor)
+module Data.Guid
+    (Guid(..), guidLength, new, xor)
 where
 
 import qualified Data.ByteString as SBS
@@ -19,14 +19,14 @@ inGuid2 :: (SBS.ByteString -> SBS.ByteString -> SBS.ByteString) ->
 inGuid2 f = inGuid . f . guidBS
 
 instance Binary Guid where
-  get = Guid `fmap` getByteString guidLen
+  get = Guid `fmap` getByteString guidLength
   put = putByteString . guidBS
 
-guidLen :: Int
-guidLen = 16
+guidLength :: Int
+guidLength = 16
 
 new :: IO Guid
-new = Guid `fmap` randomBS guidLen
+new = Guid `fmap` randomBS guidLength
 
 xor :: Guid -> Guid -> Guid
 xor = inGuid2 xorBS

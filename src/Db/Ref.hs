@@ -15,8 +15,8 @@ import Data.Binary(Binary)
 import Control.Monad((<=<), liftM)
 import qualified Db
 import Db(Db)
-import Db.Guid(Guid(..))
-import qualified Db.Guid as Guid
+import Data.Guid(Guid(..))
+import qualified Data.Guid as Guid
 import Db.Accessor(Accessor(..))
 
 -- DBRef:
