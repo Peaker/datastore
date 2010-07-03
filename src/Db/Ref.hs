@@ -1,59 +1,47 @@
 {-# OPTIONS -O2 -Wall #-}
 {-# OPTIONS -fno-warn-orphans #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, TypeFamilies #-}
 
-module Db.Ref
-    (DBRef, dbrefGuid, new, read, write, modify, pureModify,
-     accessor, follow)
+module Db.Ref(DBRef, store, unStore)
 where
 
 import Prelude hiding (read)
 
-import Data.Property(Property(..))
-import qualified Data.Property as Property
+import qualified Data.IRef as IRef
+import Data.IRef(IRef, Ref(..), Property(..))
 import Data.Binary(Binary)
-import Control.Monad((<=<), liftM)
+import Data.Maybe(fromJust)
 import qualified Db
 import Db(Db)
 import Data.Guid(Guid(..))
 import qualified Data.Guid as Guid
-import Db.Accessor(Accessor(..))
+import qualified Data.Record.Label as Label
 
 -- DBRef:
 
-newtype DBRef a = DBRef {
-  dbrefGuid :: Guid
-  }
-  deriving (Eq, Ord, Binary)
+data DBRef a = DBRef { dbrefRead :: IO a, dbrefWrite :: a -> IO () }
 
-property :: Binary a => Db -> DBRef a -> Property IO a
-property db ref = Property (read db ref) (write db ref)
+readDb :: Binary a => Db -> IRef a -> IO a
+readDb db = fmap fromJust . Db.lookup db . guidBS . IRef.guid
 
-accessor :: Binary a => Db -> DBRef a -> Accessor a
-accessor db = Accessor db . property db
+writeDb :: Binary a => Db -> IRef a -> a -> IO ()
+writeDb db = Db.set db . guidBS . IRef.guid
 
--- Convenience method (Doesn't use the setter, only the getter):
-follow :: Binary a => Accessor (DBRef a) -> IO (Accessor a)
-follow (Accessor db prop) =
-  accessor db `liftM` Property.get prop
+instance Property DBRef where
+  set = dbrefWrite
+  get = dbrefRead
+  composeLabel label (DBRef r w) = DBRef read' write'
+    where
+      read' = Label.get label `fmap` r
+      write' x = w . Label.set label x =<< r
 
-new :: Binary a => Db -> a -> IO (DBRef a)
-new db x = do
-  key <- Guid.new
-  Db.set db (guidBS key) x
-  return (DBRef key)
+instance Ref DBRef where
+  newtype Store DBRef = DBRefStore { unStore :: Db }
+  newIRef (DBRefStore db) x = do
+    iref <- IRef.unsafeFromGuid `fmap` Guid.new
+    writeDb db iref x
+    return iref
+  fromIRef (DBRefStore db) iref = DBRef (readDb db iref) (writeDb db iref)
 
-write :: Binary a => Db -> DBRef a -> a -> IO ()
-write db =
-  Db.set db . guidBS . dbrefGuid
-
-read :: Binary a => Db -> DBRef a -> IO a
-read db (DBRef key) = do
-  Just bs <- Db.lookup db . guidBS $ key
-  return bs
-
-modify :: Binary a => Db -> DBRef a -> (a -> IO a) -> IO ()
-modify db key f = (write db key <=< f) =<< read db key
-
-pureModify :: Binary a => Db -> DBRef a -> (a -> a) -> IO ()
-pureModify db key f = modify db key (return . f)
+store :: Db -> Store DBRef
+store = DBRefStore

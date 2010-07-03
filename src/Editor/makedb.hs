@@ -3,14 +3,17 @@
 module Main (main) where
 
 import Data.ByteString.UTF8(fromString)
+import qualified Data.IRef as IRef
 import qualified Db
+import qualified Db.Ref as Ref
 import qualified Editor.Tree as Tree
 
 main :: IO ()
 main =
   Db.withDb "/tmp/db.db" $ \db -> do
-    childrenRefs <- mapM (Tree.makeLeafRef db . show) [1..10 :: Int]
-    rootRef <- Tree.makeNodeRef db "tree root value" childrenRefs
-    Db.set db (fromString "root") rootRef
-    Db.set db (fromString "viewroot") rootRef
-    Db.set db (fromString "clipboard") ([] :: [Tree.Ref])
+    let store = Ref.store db
+    childrenRefs <- mapM (Tree.makeLeafRef store . show) [1..10 :: Int]
+    rootIRef <- Tree.makeNodeRef store "tree root value" childrenRefs
+    IRef.set (IRef.anchorRef store "root") rootIRef
+    IRef.set (IRef.anchorRef store "viewroot") rootIRef
+    IRef.set (IRef.anchorRef store "clipboard") =<< IRef.newIRef store ([] :: [Tree.ITreeD])

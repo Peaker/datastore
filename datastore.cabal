@@ -21,12 +21,11 @@ Executable Editor
                        random >= 1.0.0, utf8-string >= 0.3, vty >= 4.2.1, fclabels >= 0.4.2 && < 0.5
   Other-Modules:       Data.Random.Instances,
                        Data.ByteString.Utils,
-                       Data.Property,
                        Data.Record.Label.Tuple,
                        Data.Guid,
+                       Data.IRef,
                        Db,
                        Db.Ref,
-                       Db.Accessor,
                        Editor.Tree,
                        Editor.Config
   ghc-options:         -O2 -Wall
@@ -48,17 +47,17 @@ Executable makedb
   main-is:             Editor/makedb.hs
   ghc-prof-options:    -prof -auto-all
 
-Executable toxml
-  hs-Source-Dirs:      src
-  Extensions:
-  Build-Depends:       base >= 4 && < 5, vtywidgets >= 0.0.6, binary == 0.5.*,
-                       directory >= 1.0.1.1, bytestring >= 0.9, BerkeleyDB >= 0.8,
-                       random >= 1.0.0, utf8-string >= 0.3, vty >= 4.2.1
-  Other-Modules:       Data.Random.Instances,
-                       Data.ByteString.Utils,
-                       Db,
-                       Db.Ref,
-                       Editor.Tree
-  ghc-options:         -O2 -Wall
-  main-is:             Editor/toxml.hs
-  ghc-prof-options:    -prof -auto-all
+-- Executable toxml
+--   hs-Source-Dirs:      src
+--   Extensions:
+--   Build-Depends:       base >= 4 && < 5, vtywidgets >= 0.0.6, binary == 0.5.*,
+--                        directory >= 1.0.1.1, bytestring >= 0.9, BerkeleyDB >= 0.8,
+--                        random >= 1.0.0, utf8-string >= 0.3, vty >= 4.2.1
+--   Other-Modules:       Data.Random.Instances,
+--                        Data.ByteString.Utils,
+--                        Db,
+--                        Db.Ref,
+--                        Editor.Tree
+--   ghc-options:         -O2 -Wall
+--   main-is:             Editor/toxml.hs
+--   ghc-prof-options:    -prof -auto-all
