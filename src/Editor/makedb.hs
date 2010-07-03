@@ -2,7 +2,6 @@
 
 module Main (main) where
 
-import Data.ByteString.UTF8(fromString)
 import qualified Data.IRef as IRef
 import qualified Db
 import qualified Db.Ref as Ref
