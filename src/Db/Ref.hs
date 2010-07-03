@@ -1,5 +1,4 @@
 {-# OPTIONS -O2 -Wall #-}
-{-# OPTIONS -fno-warn-orphans #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving, TypeFamilies #-}
 
 module Db.Ref(DBRef, store, unStore)
