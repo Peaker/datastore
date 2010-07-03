@@ -1,3 +1,9 @@
+* Revision needs an (IRefContainer a) with new operations:
+
+  * lookup :: IRefMap a b -> a -> IO (Maybe b)
+  * insert :: IRefMap a b -> a -> b -> IO ()
+  * delete :: IRefMap a b -> a -> IO ()
+
 * Folding, max-depth under which you jump to a new root
 
 * Maybe need 'overwrite selection' in TextEdit so that I can have the

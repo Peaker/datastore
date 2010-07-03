@@ -10,17 +10,17 @@ import Data.Binary(Binary(..))
 import Data.Binary.Get(getByteString)
 import Data.Binary.Put(putByteString)
 
-newtype Guid = Guid { guidBS :: SBS.ByteString }
+newtype Guid = Guid { bs :: SBS.ByteString }
   deriving (Eq, Ord, Read, Show)
 inGuid :: (SBS.ByteString -> SBS.ByteString) -> Guid -> Guid
-inGuid f = Guid . f . guidBS
+inGuid f = Guid . f . bs
 inGuid2 :: (SBS.ByteString -> SBS.ByteString -> SBS.ByteString) ->
            Guid -> Guid -> Guid
-inGuid2 f = inGuid . f . guidBS
+inGuid2 f = inGuid . f . bs
 
 instance Binary Guid where
   get = Guid `fmap` getByteString guidLength
-  put = putByteString . guidBS
+  put = putByteString . bs
 
 guidLength :: Int
 guidLength = 16

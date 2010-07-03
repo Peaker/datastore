@@ -25,7 +25,6 @@ Executable Editor
                        Data.Guid,
                        Data.IRef,
                        Db,
-                       Db.Ref,
                        Editor.Tree,
                        Editor.Config
   ghc-options:         -O2 -Wall
@@ -39,7 +38,6 @@ Executable makedb
                        directory >= 1.0.1.1, bytestring >= 0.9, BerkeleyDB >= 0.8,
                        random >= 1.0.0, utf8-string >= 0.3, vty >= 4.2.1
   Other-Modules:       Db,
-                       Db.Ref,
                        Data.Random.Instances,
                        Data.ByteString.Utils,
                        Editor.Tree
@@ -56,7 +54,6 @@ Executable makedb
 --   Other-Modules:       Data.Random.Instances,
 --                        Data.ByteString.Utils,
 --                        Db,
---                        Db.Ref,
 --                        Editor.Tree
 --   ghc-options:         -O2 -Wall
 --   main-is:             Editor/toxml.hs

@@ -8,7 +8,7 @@ import Control.Category((.))
 import Editor.Tree(ITreeD, TreeD, Tree, Data)
 import Data.Record.Label.Tuple(first, second)
 import qualified Data.IRef as IRef
-import Data.IRef(IRef, Ref, Store, composeLabel)
+import Data.IRef(IRef, Store, StoreRef, composeLabel)
 import Data.Monoid(mempty, mappend)
 import Data.Maybe(fromMaybe)
 import Data.Vector.Vector2(Vector2(..))
@@ -24,19 +24,18 @@ import qualified Graphics.UI.VtyWidgets.Spacer as Spacer
 import Graphics.UI.VtyWidgets.Widget(Widget)
 import qualified Graphics.UI.VtyWidgets.Run as Run
 import qualified Db
-import qualified Db.Ref as DBRef
 import qualified Editor.Tree as Tree
 import qualified Editor.Config as Config
 
-setViewRoot :: Ref r => Store r -> IRef (Tree Data) -> IO ()
+setViewRoot :: Store d => d -> IRef (Tree Data) -> IO ()
 setViewRoot store = IRef.set (IRef.anchorRef store "viewroot")
 
 indent :: Int -> Display a -> Display a
 indent width disp = Grid.makeView [[Spacer.make (SizeRange.fixedSize (Vector2 width 0)), disp]]
 
-makeTreeEdit :: Ref r => Store r -> r [ITreeD] -> IRef TreeD -> IO (Widget (IO ()))
+makeTreeEdit :: Store d => d -> StoreRef d [ITreeD] -> IRef TreeD -> IO (Widget (IO ()))
 makeTreeEdit store clipboardRef treeIRef = do
-  valueRef <- IRef.follow store $ Tree.nodeValueRef `composeLabel` treeRef
+  valueRef <- IRef.follow $ Tree.nodeValueRef `composeLabel` treeRef
   makeTreeEdit'
     (second `composeLabel` valueRef)
     (second . first `composeLabel` valueRef)
@@ -45,7 +44,6 @@ makeTreeEdit store clipboardRef treeIRef = do
   where
     fromIRef = IRef.fromIRef store
     treeRef = fromIRef treeIRef
-    -- makeTreeEdit' :: r TextEdit.Model -> r Grid.Model -> r Grid.Model -> r [ITreeD] -> IO (Widget (IO ()))
     makeTreeEdit'
       valueTextEditModelRef
       childrenGridModelRef
@@ -110,22 +108,22 @@ makeTreeEdit store clipboardRef treeIRef = do
 removeAt :: Int -> [a] -> [a]
 removeAt n xs = take n xs ++ drop (n+1) xs
 
-makeGrid :: Ref r => [[Widget (IO ())]] -> r Grid.Model -> IO (Widget (IO ()))
+makeGrid :: [[Widget (IO ())]] -> StoreRef d Grid.Model -> IO (Widget (IO ()))
 makeGrid rows gridModelRef =
   fmap (Grid.make (IRef.set gridModelRef) rows) $
   IRef.get gridModelRef
 
-makeTextEdit :: Ref r => Int -> Vty.Attr -> Vty.Attr -> r TextEdit.Model -> IO (Widget (IO ()))
+makeTextEdit :: Int -> Vty.Attr -> Vty.Attr -> StoreRef d TextEdit.Model -> IO (Widget (IO ()))
 makeTextEdit maxLines defAttr editAttr textEditModelRef =
   fmap (fmap (IRef.set textEditModelRef) .
         TextEdit.make maxLines defAttr editAttr) $
   IRef.get textEditModelRef
 
 main :: IO ()
-main = Db.withDb "/tmp/db.db" $ Run.widgetLoopWithOverlay . const . makeWidget . DBRef.store
+main = Db.withDb "/tmp/db.db" $ Run.widgetLoopWithOverlay . const . makeWidget
   where
     makeWidget store = do
-      clipboardRef <- IRef.follow store clipboardIRefRef
+      clipboardRef <- IRef.follow clipboardIRefRef
       rootIRef <- IRef.get rootIRefRef
       treeEdit <- makeTreeEdit store clipboardRef rootIRef
       let treeEditWithKeys =

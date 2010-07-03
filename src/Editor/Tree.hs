@@ -8,7 +8,7 @@ module Editor.Tree(
 where
 
 import Control.Monad(liftM2)
-import Data.IRef(IRef, Ref(..), Store)
+import Data.IRef(IRef, Store)
 import qualified Data.IRef as IRef
 import Data.Binary(Binary(..))
 import qualified Graphics.UI.VtyWidgets.Grid as Grid
@@ -32,13 +32,13 @@ type Data = ((Grid.Model, Grid.Model), TextEdit.Model)
 type ITreeD = ITree Data
 type TreeD = Tree Data
 
-makeValueRef :: Ref r => Store r -> String -> IO (IRef Data)
+makeValueRef :: Store d => d -> String -> IO (IRef Data)
 makeValueRef store text = IRef.newIRef store ((Grid.initModel, Grid.initModel), TextEdit.initModel text)
 
-makeNodeRef :: Ref r => Store r -> String -> [ITreeD] -> IO ITreeD
+makeNodeRef :: Store d => d -> String -> [ITreeD] -> IO ITreeD
 makeNodeRef store text childrenRefs = do
   ref <- makeValueRef store text
   IRef.newIRef store $ Node ref childrenRefs
 
-makeLeafRef :: Ref r => Store r -> String -> IO ITreeD
+makeLeafRef :: Store d => d -> String -> IO ITreeD
 makeLeafRef db text = makeNodeRef db text []

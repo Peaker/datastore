@@ -2,8 +2,8 @@
 
 module Db
     (Db, withDb,
-     lookupBS, setBS,
-     lookup,   set,  del,
+     lookupBS, insertBS,
+     lookup,   insert,  del,
      modifyBS, modify,
      withCursor,
      nextKeyBS, nextKey)
@@ -14,6 +14,7 @@ import Control.Arrow(second)
 import Control.Exception(bracket)
 import Prelude hiding (lookup)
 import qualified Database.Berkeley.Db as Berkeley
+import qualified Data.IRef as IRef
 import Data.ByteString(ByteString)
 import Data.Binary(Binary)
 import System.Directory(createDirectoryIfMissing)
@@ -61,17 +62,22 @@ lookup db key = (fmap . fmap) decodeS (lookupBS db key)
 lookupBS :: Db -> ByteString -> IO (Maybe ByteString)
 lookupBS db = Berkeley.db_get [] (dbBerkeley db) Nothing
 
-set :: Binary a => Db -> ByteString -> a -> IO ()
-set db key = setBS db key . encodeS
+insert :: Binary a => Db -> ByteString -> a -> IO ()
+insert db key = insertBS db key . encodeS
 
-setBS :: Db -> ByteString -> ByteString -> IO ()
-setBS db = Berkeley.db_put [] (dbBerkeley db) Nothing
+insertBS :: Db -> ByteString -> ByteString -> IO ()
+insertBS db = Berkeley.db_put [] (dbBerkeley db) Nothing
 
 modifyBS :: Db -> ByteString -> (Maybe ByteString -> ByteString) -> IO ()
-modifyBS db key f = setBS db key =<< f `fmap` lookupBS db key
+modifyBS db key f = insertBS db key =<< f `fmap` lookupBS db key
 
 modify :: Binary a => Db -> ByteString -> (Maybe a -> a) -> IO ()
-modify db key f = set db key =<< f `fmap` lookup db key
+modify db key f = insert db key =<< f `fmap` lookup db key
 
 del :: Db -> ByteString -> IO ()
 del db = Berkeley.db_del [] (dbBerkeley db) Nothing
+
+instance IRef.Store Db where
+  lookup = lookup
+  insert = insert
+  delete = del
