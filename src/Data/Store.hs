@@ -60,8 +60,8 @@ composeLabel label (Ref store getter setter) = Ref store getter' setter'
 getIRef :: (Store d, Binary a) => d -> IRef a -> IO a
 getIRef store = get . fromIRef store
 
-setIRef :: (Store d, Binary a) => d -> IRef a -> IO a
-setIRef store = get . fromIRef store
+setIRef :: (Store d, Binary a) => d -> IRef a -> a -> IO ()
+setIRef store = set . fromIRef store
 
 newIRef :: (Store d, Binary a) => d -> a -> IO (IRef a)
 newIRef store val = do
