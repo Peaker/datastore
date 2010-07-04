@@ -10,8 +10,9 @@ module Editor.Data(
 where
 
 import Control.Monad(liftM2)
-import Data.IRef(IRef, Store, StoreRef)
-import qualified Data.IRef as IRef
+import Data.IRef(IRef)
+import Data.Store(Store)
+import qualified Data.Store as Store
 import Data.Binary(Binary(..))
 import qualified Graphics.UI.VtyWidgets.Grid as Grid
 import qualified Graphics.UI.VtyWidgets.TextEdit as TextEdit
@@ -31,29 +32,29 @@ $(mkLabels [''Tree])
 nodeValueRef :: Tree a :-> IRef a
 nodeChildrenRefs :: Tree a :-> [IRef (Tree a)]
 
-clipboardIRefRef :: Store d => d -> StoreRef d (IRef [ITreeD])
-clipboardIRefRef store = IRef.anchorRef store "clipboard"
+clipboardIRefRef :: Store d => d -> Store.Ref d (IRef [ITreeD])
+clipboardIRefRef store = Store.anchorRef store "clipboard"
 
-rootIRefRef :: Store d => d -> StoreRef d ITreeD
-rootIRefRef store = IRef.anchorRef store "root"
+rootIRefRef :: Store d => d -> Store.Ref d ITreeD
+rootIRefRef store = Store.anchorRef store "root"
 
-viewRootIRefRef :: Store d => d -> StoreRef d ITreeD
-viewRootIRefRef store = IRef.anchorRef store "viewroot"
+viewRootIRefRef :: Store d => d -> Store.Ref d ITreeD
+viewRootIRefRef store = Store.anchorRef store "viewroot"
 
-masterViewIRefRef :: Store d => d -> StoreRef d (IRef Revision.View)
-masterViewIRefRef store = IRef.anchorRef store "master"
+masterViewIRefRef :: Store d => d -> Store.Ref d (IRef Revision.View)
+masterViewIRefRef store = Store.anchorRef store "master"
 
 instance Binary (Tree a) where
   put (Node value children) = put value >> put children
   get = liftM2 Node get get
 
 makeValueRef :: Store d => d -> String -> IO (IRef Data)
-makeValueRef store text = IRef.newIRef store ((Grid.initModel, Grid.initModel), TextEdit.initModel text)
+makeValueRef store text = Store.newIRef store ((Grid.initModel, Grid.initModel), TextEdit.initModel text)
 
 makeNodeRef :: Store d => d -> String -> [ITreeD] -> IO ITreeD
 makeNodeRef store text childrenRefs = do
   ref <- makeValueRef store text
-  IRef.newIRef store $ Node ref childrenRefs
+  Store.newIRef store $ Node ref childrenRefs
 
 makeLeafRef :: Store d => d -> String -> IO ITreeD
 makeLeafRef db text = makeNodeRef db text []

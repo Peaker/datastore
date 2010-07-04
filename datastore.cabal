@@ -24,6 +24,7 @@ Executable Editor
                        Data.Record.Label.Tuple,
                        Data.Guid,
                        Data.IRef,
+                       Data.Store,
                        Data.Revision,
                        Db,
                        Editor.Data,
@@ -42,6 +43,8 @@ Executable makedb
                        Data.Random.Instances,
                        Data.ByteString.Utils,
                        Data.Revision,
+                       Data.IRef,
+                       Data.Store,
                        Editor.Data
   ghc-options:         -O2 -Wall
   main-is:             Editor/makedb.hs
@@ -55,6 +58,8 @@ Executable toxml
                        random >= 1.0.0, utf8-string >= 0.3, vty >= 4.2.1
   Other-Modules:       Data.Random.Instances,
                        Data.ByteString.Utils,
+                       Data.IRef,
+                       Data.Store,
                        Db,
                        Editor.Data
   ghc-options:         -O2 -Wall

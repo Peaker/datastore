@@ -10,7 +10,7 @@ import Control.Arrow(second)
 import Control.Exception(bracket)
 import Prelude hiding (lookup)
 import qualified Database.Berkeley.Db as Berkeley
-import qualified Data.IRef as IRef
+import Data.Store(Store(..))
 import Data.ByteString(ByteString)
 import Data.Binary(Binary)
 import System.Directory(createDirectoryIfMissing)
@@ -52,7 +52,7 @@ nextKey cursor = (fmap . fmap . second) decodeS (nextKeyBS cursor)
 withDb :: FilePath -> (Db -> IO a) -> IO a
 withDb filePath = bracket (open filePath) close
 
-instance IRef.Store Db where
+instance Store Db where
   lookupBS db = Berkeley.db_get [] (dbBerkeley db) Nothing
   insertBS db = Berkeley.db_put [] (dbBerkeley db) Nothing
   deleteBS db = Berkeley.db_del [] (dbBerkeley db) Nothing

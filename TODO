@@ -1,4 +1,4 @@
-* IRef split to Store, StoreRef
+* IRef split to Store
 
 * Transactions to avoid intermediate versions
   * Avoid undo beyond a "marked" version?

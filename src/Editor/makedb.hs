@@ -2,8 +2,8 @@
 
 module Main (main) where
 
-import qualified Data.IRef as IRef
-import Data.IRef(Store)
+import qualified Data.Store as Store
+import Data.Store(Store)
 import qualified Data.Revision as Revision
 import qualified Db
 import qualified Editor.Data as Data
@@ -17,10 +17,10 @@ main :: IO ()
 main =
   Db.withDb "/tmp/db.db" $ \dbStore -> do
     viewRef <- makeViewRef dbStore
-    IRef.set (Data.masterViewIRefRef dbStore) $ Revision.viewIRef viewRef
+    Store.set (Data.masterViewIRefRef dbStore) $ Revision.viewIRef viewRef
     let store = viewRef
     childrenRefs <- mapM (Data.makeLeafRef store . show) [1..10 :: Int]
     rootIRef <- Data.makeNodeRef store "tree root value" childrenRefs
-    IRef.set (Data.rootIRefRef store) rootIRef
-    IRef.set (Data.viewRootIRefRef store) rootIRef
-    IRef.set (Data.clipboardIRefRef store) =<< IRef.newIRef store ([] :: [Data.ITreeD])
+    Store.set (Data.rootIRefRef store) rootIRef
+    Store.set (Data.viewRootIRefRef store) rootIRef
+    Store.set (Data.clipboardIRefRef store) =<< Store.newIRef store ([] :: [Data.ITreeD])

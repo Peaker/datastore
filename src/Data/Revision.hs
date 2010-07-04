@@ -15,7 +15,9 @@ import Data.ByteString.Utils(xorBS)
 import Data.Record.Label((:->), mkLabels, label)
 import qualified Data.Record.Label as Label
 import qualified Data.IRef as IRef
-import Data.IRef(IRef, Store)
+import Data.IRef(IRef)
+import qualified Data.Store as Store
+import Data.Store(Store)
 import qualified Data.Guid as Guid
 
 type ObjectKey = ByteString
@@ -58,9 +60,9 @@ data ViewRef d = ViewRef { viewRefStore :: d,
 
 viewRefVersion :: Store d => ViewRef d -> IO Version
 viewRefVersion viewRef = do
-  let viewStoreRef = IRef.fromIRef store . viewIRef $ viewRef
-  View versionIRef <- IRef.get viewStoreRef
-  IRef.getIRef store versionIRef
+  let viewStoreRef = Store.fromIRef store . viewIRef $ viewRef
+  View versionIRef <- Store.get viewStoreRef
+  Store.getIRef store versionIRef
   where
     store = viewRefStore viewRef
 
@@ -70,8 +72,8 @@ viewKey = xorBS . Guid.bs . IRef.guid . viewIRef
 setViewValue :: Store d => ViewRef d -> ObjectKey -> Maybe ObjectValue -> IO ()
 setViewValue viewRef objKey mbValue =
   case mbValue of
-    Nothing ->    IRef.deleteBS store key
-    Just value -> IRef.insertBS store key value
+    Nothing ->    Store.deleteBS store key
+    Just value -> Store.insertBS store key value
   where
     store = viewRefStore viewRef
     key = viewKey viewRef objKey
@@ -88,44 +90,44 @@ buildViewFromVersion viewRef = loop
   where
     store = viewRefStore viewRef
     loop (Version _ mbParentIRef changes) = do
-      maybe (return ()) (loop <=< IRef.getIRef store) mbParentIRef
+      maybe (return ()) (loop <=< Store.getIRef store) mbParentIRef
       applyChanges viewRef newValue changes
 
 makeView :: Store d => d -> IRef Version -> IO (ViewRef d)
 makeView store versionIRef = do
-  viewRef <- ViewRef store `fmap` IRef.newIRef store (View versionIRef)
-  buildViewFromVersion viewRef =<< IRef.getIRef store versionIRef
+  viewRef <- ViewRef store `fmap` Store.newIRef store (View versionIRef)
+  buildViewFromVersion viewRef =<< Store.getIRef store versionIRef
   return viewRef
 
 makeInitialVersion :: Store d => d -> IO (IRef Version)
-makeInitialVersion store = IRef.newIRef store $ Version 0 Nothing []
+makeInitialVersion store = Store.newIRef store $ Version 0 Nothing []
 
 makeVersion :: Store d => d -> IRef Version -> [Change] -> IO (IRef Version)
 makeVersion store versionIRef changes = do
-  depth <- versionDepth `fmap` IRef.getIRef store versionIRef
-  IRef.newIRef store (Version (depth+1) (Just versionIRef) changes)
+  depth <- versionDepth `fmap` Store.getIRef store versionIRef
+  Store.newIRef store (Version (depth+1) (Just versionIRef) changes)
 
 makeVersionOnView :: Store d => ViewRef d -> [Change] -> IO ()
 makeVersionOnView viewRef changes = do
-  let viewStoreRef = IRef.fromIRef store . viewIRef $ viewRef
-  View versionIRef <- IRef.get viewStoreRef
+  let viewStoreRef = Store.fromIRef store . viewIRef $ viewRef
+  View versionIRef <- Store.get viewStoreRef
   versionIRef' <- makeVersion store versionIRef changes
   applyChanges viewRef newValue changes
-  IRef.set viewStoreRef $ View versionIRef'
+  Store.set viewStoreRef $ View versionIRef'
   where
     store = viewRefStore viewRef
 
 makeChange :: Store d => ViewRef d -> ObjectKey -> Maybe ObjectValue -> IO Change
 makeChange viewRef key value = do
-  old <- IRef.lookupBS viewRef key
+  old <- Store.lookupBS viewRef key
   return . Change key old $ value
 
 mostRecentAncestor :: Store d => d -> IRef Version -> IRef Version -> IO (IRef Version)
 mostRecentAncestor store aIRef bIRef
   | aIRef == bIRef  = return aIRef
   | otherwise       = do
-    a <- IRef.getIRef store $ aIRef
-    b <- IRef.getIRef store $ bIRef
+    a <- Store.getIRef store $ aIRef
+    b <- Store.getIRef store $ bIRef
     climb a b
   where
     climb
@@ -140,7 +142,7 @@ walkUp :: Store d => d -> (Version -> IO ()) -> IRef Version -> IRef Version -> 
 walkUp store onVersion topRef bottomRef
   | bottomRef == topRef  = return ()
   | otherwise            = do
-    version <- IRef.getIRef store $ bottomRef
+    version <- Store.getIRef store $ bottomRef
     onVersion version
     maybe (fail "Invalid path given, hit top") (walkUp store onVersion topRef) $
       versionParent version
@@ -154,7 +156,7 @@ versionsBetween store topRef bottomRef = accumulateWalkUp [] bottomRef
     accumulateWalkUp vs curRef
       | topRef == curRef  = return vs
       | otherwise         = do
-        version <- IRef.getIRef store $ curRef
+        version <- Store.getIRef store $ curRef
         maybe (fail "Invalid path given, hit top") (accumulateWalkUp (version:vs)) $
           versionParent version
 
@@ -165,12 +167,12 @@ walkDown store onVersion topRef bottomRef =
 
 moveView :: Store d => ViewRef d -> IRef Version -> IO ()
 moveView viewRef versionIRef = do
-  let viewStoreRef = IRef.fromIRef store . viewIRef $ viewRef
-  View viewVersionRef <- IRef.get viewStoreRef
+  let viewStoreRef = Store.fromIRef store . viewIRef $ viewRef
+  View viewVersionRef <- Store.get viewStoreRef
   mraRef <- mostRecentAncestor store viewVersionRef versionIRef
   walkUp store applyBackward mraRef viewVersionRef
   walkDown store applyForward mraRef versionIRef
-  IRef.set viewStoreRef $ View versionIRef
+  Store.set viewStoreRef $ View versionIRef
   where
     store = viewRefStore viewRef
     applyForward = apply newValue
@@ -183,7 +185,7 @@ singleChangeOnView viewRef key value =
   makeChange viewRef key value
 
 instance Store d => Store (ViewRef d) where
-  lookupBS viewRef objKey = IRef.lookupBS store key
+  lookupBS viewRef objKey = Store.lookupBS store key
     where
       store = viewRefStore viewRef
       key = viewKey viewRef objKey

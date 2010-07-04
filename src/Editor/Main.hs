@@ -6,8 +6,9 @@ module Main(main) where
 import Prelude hiding ((.))
 import Control.Category((.))
 import Data.Record.Label.Tuple(first, second)
-import qualified Data.IRef as IRef
-import Data.IRef(IRef, Store, StoreRef, composeLabel)
+import Data.IRef(IRef)
+import qualified Data.Store as Store
+import Data.Store(Store, composeLabel)
 import qualified Data.Revision as Revision
 import Data.Monoid(mempty, mappend)
 import Data.Maybe(fromMaybe)
@@ -29,21 +30,21 @@ import qualified Editor.Data as Data
 import qualified Editor.Config as Config
 
 setViewRoot :: Store d => d -> IRef (Tree Data) -> IO ()
-setViewRoot store = IRef.set (IRef.anchorRef store "viewroot")
+setViewRoot store = Store.set (Store.anchorRef store "viewroot")
 
 indent :: Int -> Display a -> Display a
 indent width disp = Grid.makeView [[Spacer.make (SizeRange.fixedSize (Vector2 width 0)), disp]]
 
-makeTreeEdit :: Store d => d -> StoreRef d [ITreeD] -> IRef TreeD -> IO (Widget (IO ()))
+makeTreeEdit :: Store d => d -> Store.Ref d [ITreeD] -> IRef TreeD -> IO (Widget (IO ()))
 makeTreeEdit store clipboardRef treeIRef = do
-  valueRef <- IRef.follow $ Data.nodeValueRef `composeLabel` treeRef
+  valueRef <- Store.follow $ Data.nodeValueRef `composeLabel` treeRef
   makeTreeEdit'
     (second `composeLabel` valueRef)
     (second . first `composeLabel` valueRef)
     (first . first `composeLabel` valueRef)
     (Data.nodeChildrenRefs `composeLabel` treeRef)
   where
-    fromIRef = IRef.fromIRef store
+    fromIRef = Store.fromIRef store
     treeRef = fromIRef treeIRef
     makeTreeEdit'
       valueTextEditModelRef
@@ -54,7 +55,7 @@ makeTreeEdit store clipboardRef treeIRef = do
         valueEdit <- makeTextEdit 2
                      TextEdit.defaultAttr TextEdit.editingAttr
                      valueTextEditModelRef
-        childItems <- mapM (makeTreeEdit store clipboardRef) =<< IRef.get childrenIRefsRef
+        childItems <- mapM (makeTreeEdit store clipboardRef) =<< Store.get childrenIRefsRef
         curChildIndex <- getChildIndex (length childItems)
         childGrid <- makeGrid (map (: []) childItems) childrenGridModelRef
         let childGrid' = (Widget.strongerKeys $
@@ -64,7 +65,7 @@ makeTreeEdit store clipboardRef treeIRef = do
                          Widget.atDisplay (indent 5) $
                          childGrid
         outerGrid <- makeGrid [[valueEdit], [childGrid']] outerGridModelRef
-        clipboard <- IRef.get clipboardRef
+        clipboard <- Store.get clipboardRef
         return .
           Widget.strongerKeys (pasteKeymap clipboard `mappend`
                                appendNewNodeKeymap `mappend`
@@ -75,12 +76,12 @@ makeTreeEdit store clipboardRef treeIRef = do
           | 0 <= index && index < count = Just index
           | otherwise = Nothing
         getChildIndex count = (validateIndex count . Vector2.snd . Grid.modelCursor) `fmap`
-                              IRef.get childrenGridModelRef
+                              Store.get childrenGridModelRef
         pasteKeymap [] = mempty
         pasteKeymap (cbChildRef:xs) =
           Keymap.simpleton "Paste" Config.pasteKey $ do
             appendChild cbChildRef
-            IRef.set clipboardRef xs
+            Store.set clipboardRef xs
         appendNewNodeKeymap = Keymap.simpleton "Append new child node"
                               Config.appendChildKey appendNewChild
         cutNodeKeymap = fromMaybe mempty .
@@ -95,36 +96,36 @@ makeTreeEdit store clipboardRef treeIRef = do
           newRef <- Data.makeLeafRef store "NEW_NODE"
           appendChild newRef
         appendChild newRef = do
-          IRef.modify childrenIRefsRef (++ [newRef])
-          childrenIRefs <- IRef.get childrenIRefsRef
-          IRef.set outerGridModelRef $ yGridCursor 1
-          IRef.set childrenGridModelRef $ yGridCursor (length childrenIRefs - 1)
+          Store.modify childrenIRefsRef (++ [newRef])
+          childrenIRefs <- Store.get childrenIRefsRef
+          Store.set outerGridModelRef $ yGridCursor 1
+          Store.set childrenGridModelRef $ yGridCursor (length childrenIRefs - 1)
         cutChild index = do
-          childrenIRefs <- IRef.get childrenIRefsRef
-          IRef.modify clipboardRef (childrenIRefs !! index :)
+          childrenIRefs <- Store.get childrenIRefsRef
+          Store.modify clipboardRef (childrenIRefs !! index :)
           delChild index
         delChild index =
-          IRef.modify childrenIRefsRef $ removeAt index
+          Store.modify childrenIRefsRef $ removeAt index
 
 removeAt :: Int -> [a] -> [a]
 removeAt n xs = take n xs ++ drop (n+1) xs
 
-makeGrid :: [[Widget (IO ())]] -> StoreRef d Grid.Model -> IO (Widget (IO ()))
+makeGrid :: [[Widget (IO ())]] -> Store.Ref d Grid.Model -> IO (Widget (IO ()))
 makeGrid rows gridModelRef =
-  fmap (Grid.make (IRef.set gridModelRef) rows) $
-  IRef.get gridModelRef
+  fmap (Grid.make (Store.set gridModelRef) rows) $
+  Store.get gridModelRef
 
-makeTextEdit :: Int -> Vty.Attr -> Vty.Attr -> StoreRef d TextEdit.Model -> IO (Widget (IO ()))
+makeTextEdit :: Int -> Vty.Attr -> Vty.Attr -> Store.Ref d TextEdit.Model -> IO (Widget (IO ()))
 makeTextEdit maxLines defAttr editAttr textEditModelRef =
-  fmap (fmap (IRef.set textEditModelRef) .
+  fmap (fmap (Store.set textEditModelRef) .
         TextEdit.make maxLines defAttr editAttr) $
-  IRef.get textEditModelRef
+  Store.get textEditModelRef
 
 main :: IO ()
 main = Db.withDb "/tmp/db.db" $ Run.widgetLoopWithOverlay . const . makeWidget
   where
     makeWidget dbStore = do
-      masterViewRef <- Revision.ViewRef dbStore `fmap` IRef.get (Data.masterViewIRefRef dbStore)
+      masterViewRef <- Revision.ViewRef dbStore `fmap` Store.get (Data.masterViewIRefRef dbStore)
       undoKeymap <- makeUndoKeymap masterViewRef
       Widget.strongerKeys undoKeymap `fmap` makeWidgetForView masterViewRef
     makeUndoKeymap masterViewRef = do
@@ -137,8 +138,8 @@ main = Db.withDb "/tmp/db.db" $ Run.widgetLoopWithOverlay . const . makeWidget
 
 makeWidgetForView :: Store d => d -> IO (Widget (IO ()))
 makeWidgetForView store = do
-  viewRootIRef <- IRef.get viewRootIRefRef
-  clipboardRef <- IRef.follow . Data.clipboardIRefRef $ store
+  viewRootIRef <- Store.get viewRootIRefRef
+  clipboardRef <- Store.follow . Data.clipboardIRefRef $ store
   treeEdit <- makeTreeEdit store clipboardRef viewRootIRef
   goRootKeymap <- makeGoRootKeymap
   let treeEditWithKeys =
@@ -151,11 +152,11 @@ makeWidgetForView store = do
     rootIRefRef = Data.rootIRefRef $ store
     quitKeymap = Keymap.simpleton "Quit" Config.quitKey . ioError . userError $ "Quit"
     makeGoRootKeymap = do
-      rootIRef <- IRef.get rootIRefRef
-      viewRootIRef <- IRef.get viewRootIRefRef
+      rootIRef <- Store.get rootIRefRef
+      viewRootIRef <- Store.get viewRootIRefRef
       return $
         if viewRootIRef == rootIRef
         then mempty
         else Keymap.simpleton "Go to root" Config.rootKey .
-             IRef.set viewRootIRefRef $
+             Store.set viewRootIRefRef $
              rootIRef
