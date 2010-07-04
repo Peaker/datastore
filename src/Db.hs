@@ -52,7 +52,10 @@ nextKey cursor = (fmap . fmap . second) decodeS (nextKeyBS cursor)
 withDb :: FilePath -> (Db -> IO a) -> IO a
 withDb filePath = bracket (open filePath) close
 
+applyChange :: Db -> ByteString -> Maybe ByteString -> IO ()
+applyChange db key Nothing = Berkeley.db_del [] (dbBerkeley db) Nothing key
+applyChange db key (Just value) = Berkeley.db_put [] (dbBerkeley db) Nothing key value
+
 instance Store Db where
   lookupBS db = Berkeley.db_get [] (dbBerkeley db) Nothing
-  insertBS db = Berkeley.db_put [] (dbBerkeley db) Nothing
-  deleteBS db = Berkeley.db_del [] (dbBerkeley db) Nothing
+  storeChanges = mapM_ . uncurry . applyChange

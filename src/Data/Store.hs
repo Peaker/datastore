@@ -2,7 +2,9 @@
 {-# LANGUAGE TypeOperators #-}
 
 module Data.Store
-    (Store(..), lookup, insert, delete,
+    (Store(..), lookup,
+     insertBS, deleteBS,
+     insert, delete,
      Ref, refStore,
      get, set, modify, composeLabel,
      getIRef, setIRef, newIRef, fromIRef,
@@ -21,22 +23,29 @@ import Data.ByteString.UTF8(ByteString)
 import qualified Data.Guid as Guid
 import Data.Guid(Guid)
 
+type Change = (ByteString, Maybe ByteString)
+
 class Store d where
   lookupBS :: d -> ByteString -> IO (Maybe ByteString)
-  insertBS :: d -> ByteString -> ByteString -> IO ()
-  deleteBS :: d -> ByteString -> IO ()
+  storeChanges :: d -> [Change] -> IO ()
 
 lookup :: (Store d, Binary a) => d -> Guid -> IO (Maybe a)
 lookup store = (fmap . fmap) decodeS . lookupBS store . Guid.bs
 
+readStoreIRef :: (Store d, Binary a) => d -> IRef a -> IO a
+readStoreIRef store = fmap fromJust . lookup store . IRef.guid
+
+insertBS :: Store d => d -> ByteString -> ByteString -> IO ()
+insertBS store key value = storeChanges store [(key, Just value)]
+
 insert :: (Store d, Binary a) => d -> Guid -> a -> IO ()
-insert store key = insertBS store (Guid.bs key) . encodeS
+insert store key value = insertBS store (Guid.bs key) (encodeS value)
+
+deleteBS :: Store d => d -> ByteString -> IO ()
+deleteBS store key = storeChanges store [(key, Nothing)]
 
 delete :: Store d => d -> Guid -> IO ()
 delete store = deleteBS store . Guid.bs
-
-readStoreIRef :: (Store d, Binary a) => d -> IRef a -> IO a
-readStoreIRef store = fmap fromJust . lookup store . IRef.guid
 
 writeStoreIRef :: (Store d, Binary a) => d -> IRef a -> a -> IO ()
 writeStoreIRef store = insert store . IRef.guid

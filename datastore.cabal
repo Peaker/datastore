@@ -18,7 +18,8 @@ Executable Editor
   Extensions:
   Build-Depends:       base >= 4 && < 5, vtywidgets >= 0.0.6, binary == 0.5.*,
                        directory >= 1.0.1.1, bytestring >= 0.9, BerkeleyDB >= 0.8,
-                       random >= 1.0.0, utf8-string >= 0.3, vty >= 4.2.1, fclabels >= 0.4.2 && < 0.5
+                       random >= 1.0.0, utf8-string >= 0.3, vty >= 4.2.1, fclabels >= 0.4.2 && < 0.5,
+                       containers >= 0.3 && < 0.4
   Other-Modules:       Data.Random.Instances,
                        Data.ByteString.Utils,
                        Data.Record.Label.Tuple,
@@ -26,6 +27,7 @@ Executable Editor
                        Data.IRef,
                        Data.Store,
                        Data.Revision,
+                       Data.Transaction,
                        Db,
                        Editor.Data,
                        Editor.Config
@@ -43,6 +45,7 @@ Executable makedb
                        Data.Random.Instances,
                        Data.ByteString.Utils,
                        Data.Revision,
+                       Data.Transaction,
                        Data.IRef,
                        Data.Store,
                        Editor.Data
@@ -58,6 +61,8 @@ Executable toxml
                        random >= 1.0.0, utf8-string >= 0.3, vty >= 4.2.1
   Other-Modules:       Data.Random.Instances,
                        Data.ByteString.Utils,
+                       Data.Revision,
+                       Data.Transaction,
                        Data.IRef,
                        Data.Store,
                        Db,

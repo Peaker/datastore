@@ -179,15 +179,9 @@ moveView viewRef versionIRef = do
     applyBackward = apply oldValue
     apply changeDir version = applyChanges viewRef changeDir . versionChanges $ version
 
-singleChangeOnView :: Store d => ViewRef d -> ObjectKey -> Maybe ObjectValue -> IO ()
-singleChangeOnView viewRef key value =
-  makeVersionOnView viewRef . (: []) =<<
-  makeChange viewRef key value
-
 instance Store d => Store (ViewRef d) where
   lookupBS viewRef objKey = Store.lookupBS store key
     where
       store = viewRefStore viewRef
       key = viewKey viewRef objKey
-  insertBS viewRef key value = singleChangeOnView viewRef key (Just value)
-  deleteBS viewRef key       = singleChangeOnView viewRef key Nothing
+  storeChanges viewRef = makeVersionOnView viewRef <=< mapM (uncurry (makeChange viewRef))

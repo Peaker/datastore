@@ -5,13 +5,14 @@ module Main(main) where
 
 import Prelude hiding ((.))
 import Control.Category((.))
+import Control.Monad(liftM2)
 import Data.Record.Label.Tuple(first, second)
 import Data.IRef(IRef)
 import qualified Data.Store as Store
 import Data.Store(Store, composeLabel)
 import qualified Data.Revision as Revision
 import Data.Monoid(mempty, mappend)
-import Data.Maybe(fromMaybe)
+import Data.Maybe(fromMaybe, fromJust)
 import Data.Vector.Vector2(Vector2(..))
 import qualified Data.Vector.Vector2 as Vector2
 import qualified Graphics.Vty as Vty
@@ -44,8 +45,7 @@ makeTreeEdit store clipboardRef treeIRef = do
     (first . first `composeLabel` valueRef)
     (Data.nodeChildrenRefs `composeLabel` treeRef)
   where
-    fromIRef = Store.fromIRef store
-    treeRef = fromIRef treeIRef
+    treeRef = Store.fromIRef store treeIRef
     makeTreeEdit'
       valueTextEditModelRef
       childrenGridModelRef
@@ -127,36 +127,35 @@ main = Db.withDb "/tmp/db.db" $ Run.widgetLoopWithOverlay . const . makeWidget
     makeWidget dbStore = do
       masterViewRef <- Revision.ViewRef dbStore `fmap` Store.get (Data.masterViewIRefRef dbStore)
       undoKeymap <- makeUndoKeymap masterViewRef
-      Widget.strongerKeys undoKeymap `fmap` makeWidgetForView masterViewRef
+      widget <- makeWidgetForView masterViewRef
+      return .
+        Widget.strongerKeys (undoKeymap `mappend` quitKeymap) $
+        widget
+    quitKeymap = Keymap.simpleton "Quit" Config.quitKey . ioError . userError $ "Quit"
     makeUndoKeymap masterViewRef = do
-      mbParent <- Revision.versionParent `fmap` Revision.viewRefVersion masterViewRef
+      version <- Revision.viewRefVersion masterViewRef
       return $
-        maybe
-        mempty -- No parent, no undo
-        (Keymap.simpleton "Undo" Config.undoKey . Revision.moveView masterViewRef)
-        mbParent
+        -- Don't allow undo behind first revision
+        if Revision.versionDepth version > 1
+        then Keymap.simpleton "Undo" Config.undoKey .
+             Revision.moveView masterViewRef .
+             fromJust . Revision.versionParent $
+             version
+        else mempty
 
 makeWidgetForView :: Store d => d -> IO (Widget (IO ()))
 makeWidgetForView store = do
   viewRootIRef <- Store.get viewRootIRefRef
   clipboardRef <- Store.follow . Data.clipboardIRefRef $ store
+  goRootKeymap <- liftM2 makeGoRootKeymap (Store.get rootIRefRef) (Store.get viewRootIRefRef)
   treeEdit <- makeTreeEdit store clipboardRef viewRootIRef
-  goRootKeymap <- makeGoRootKeymap
-  let treeEditWithKeys =
-        Widget.strongerKeys
-        (quitKeymap `mappend` goRootKeymap)
-        treeEdit
-  return treeEditWithKeys
+  return $ Widget.strongerKeys goRootKeymap treeEdit
   where
     viewRootIRefRef = Data.viewRootIRefRef store
-    rootIRefRef = Data.rootIRefRef $ store
-    quitKeymap = Keymap.simpleton "Quit" Config.quitKey . ioError . userError $ "Quit"
-    makeGoRootKeymap = do
-      rootIRef <- Store.get rootIRefRef
-      viewRootIRef <- Store.get viewRootIRefRef
-      return $
-        if viewRootIRef == rootIRef
-        then mempty
-        else Keymap.simpleton "Go to root" Config.rootKey .
-             Store.set viewRootIRefRef $
-             rootIRef
+    rootIRefRef = Data.rootIRefRef store
+    makeGoRootKeymap rootIRef viewRootIRef =
+      if viewRootIRef == rootIRef
+      then mempty
+      else Keymap.simpleton "Go to root" Config.rootKey .
+           Store.set viewRootIRefRef $
+           rootIRef

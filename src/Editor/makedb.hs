@@ -5,6 +5,7 @@ module Main (main) where
 import qualified Data.Store as Store
 import Data.Store(Store)
 import qualified Data.Revision as Revision
+import qualified Data.Transaction as Transaction
 import qualified Db
 import qualified Editor.Data as Data
 
@@ -18,9 +19,9 @@ main =
   Db.withDb "/tmp/db.db" $ \dbStore -> do
     viewRef <- makeViewRef dbStore
     Store.set (Data.masterViewIRefRef dbStore) $ Revision.viewIRef viewRef
-    let store = viewRef
-    childrenRefs <- mapM (Data.makeLeafRef store . show) [1..10 :: Int]
-    rootIRef <- Data.makeNodeRef store "tree root value" childrenRefs
-    Store.set (Data.rootIRefRef store) rootIRef
-    Store.set (Data.viewRootIRefRef store) rootIRef
-    Store.set (Data.clipboardIRefRef store) =<< Store.newIRef store ([] :: [Data.ITreeD])
+    Transaction.withTransaction viewRef $ \store -> do
+      childrenRefs <- mapM (Data.makeLeafRef store . show) [1..10 :: Int]
+      rootIRef <- Data.makeNodeRef store "tree root value" childrenRefs
+      Store.set (Data.rootIRefRef store) rootIRef
+      Store.set (Data.viewRootIRefRef store) rootIRef
+      Store.set (Data.clipboardIRefRef store) =<< Store.newIRef store ([] :: [Data.ITreeD])
