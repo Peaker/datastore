@@ -5,7 +5,6 @@ module Main(main) where
 
 import Prelude hiding ((.))
 import Control.Category((.))
-import Editor.Tree(ITreeD, TreeD, Tree, Data)
 import Data.Record.Label.Tuple(first, second)
 import qualified Data.IRef as IRef
 import Data.IRef(IRef, Store, StoreRef, composeLabel)
@@ -24,7 +23,8 @@ import qualified Graphics.UI.VtyWidgets.Spacer as Spacer
 import Graphics.UI.VtyWidgets.Widget(Widget)
 import qualified Graphics.UI.VtyWidgets.Run as Run
 import qualified Db
-import qualified Editor.Tree as Tree
+import Editor.Data(ITreeD, TreeD, Tree, Data)
+import qualified Editor.Data as Data
 import qualified Editor.Config as Config
 
 setViewRoot :: Store d => d -> IRef (Tree Data) -> IO ()
@@ -35,12 +35,12 @@ indent width disp = Grid.makeView [[Spacer.make (SizeRange.fixedSize (Vector2 wi
 
 makeTreeEdit :: Store d => d -> StoreRef d [ITreeD] -> IRef TreeD -> IO (Widget (IO ()))
 makeTreeEdit store clipboardRef treeIRef = do
-  valueRef <- IRef.follow $ Tree.nodeValueRef `composeLabel` treeRef
+  valueRef <- IRef.follow $ Data.nodeValueRef `composeLabel` treeRef
   makeTreeEdit'
     (second `composeLabel` valueRef)
     (second . first `composeLabel` valueRef)
     (first . first `composeLabel` valueRef)
-    (Tree.nodeChildrenRefs `composeLabel` treeRef)
+    (Data.nodeChildrenRefs `composeLabel` treeRef)
   where
     fromIRef = IRef.fromIRef store
     treeRef = fromIRef treeIRef
@@ -91,7 +91,7 @@ makeTreeEdit store clipboardRef treeIRef = do
             setViewRoot store treeIRef
         yGridCursor = Grid.Model . Vector2 0
         appendNewChild = do
-          newRef <- Tree.makeLeafRef store "NEW_NODE"
+          newRef <- Data.makeLeafRef store "NEW_NODE"
           appendChild newRef
         appendChild newRef = do
           IRef.modify childrenIRefsRef (++ [newRef])
@@ -123,8 +123,8 @@ main :: IO ()
 main = Db.withDb "/tmp/db.db" $ Run.widgetLoopWithOverlay . const . makeWidget
   where
     makeWidget store = do
-      clipboardRef <- IRef.follow clipboardIRefRef
-      rootIRef <- IRef.get rootIRefRef
+      clipboardRef <- IRef.follow . Data.clipboardIRefRef $ store
+      rootIRef <- IRef.get . Data.rootIRefRef $ store
       treeEdit <- makeTreeEdit store clipboardRef rootIRef
       let treeEditWithKeys =
             Widget.strongerKeys
@@ -132,10 +132,7 @@ main = Db.withDb "/tmp/db.db" $ Run.widgetLoopWithOverlay . const . makeWidget
             treeEdit
       return treeEditWithKeys
       where
-        clipboardIRefRef = IRef.anchorRef store "clipboard"
-        rootIRefRef = IRef.anchorRef store "root"
-        viewRootIRefRef = IRef.anchorRef store "viewroot"
         quitKeymap = Keymap.simpleton "Quit" Config.quitKey . ioError . userError $ "Quit"
         goRootKeymap rootIRef =
           Keymap.simpleton "Go to root" Config.rootKey $
-            IRef.set viewRootIRefRef rootIRef
+            IRef.set (Data.viewRootIRefRef store) rootIRef

@@ -1,5 +1,5 @@
 {-# OPTIONS -O2 -Wall #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving, TypeOperators, TypeFamilies #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, TypeOperators #-}
 
 module Data.IRef
     (IRef, guid, unsafeFromGuid, anchorIRef,
@@ -14,7 +14,7 @@ import Data.Maybe(fromJust)
 import Data.Binary(Binary)
 import Data.Record.Label((:->))
 import qualified Data.Record.Label as Label
-import Data.ByteString.UTF8(ByteString, fromString)
+import Data.ByteString.UTF8(fromString)
 import Data.Guid(Guid(Guid))
 import qualified Data.Guid as Guid
 
@@ -30,18 +30,16 @@ unsafeFromGuid = IRef
 anchorIRef :: (Binary a) => String -> IRef a
 anchorIRef = unsafeFromGuid . Guid . fromString
 
-
 class Store d where
-  lookup :: Binary a => d -> ByteString -> IO (Maybe a)
-  insert :: Binary a => d -> ByteString -> a -> IO ()
-  delete :: d -> ByteString -> IO ()
-
+  lookup :: Binary a => d -> Guid -> IO (Maybe a)
+  insert :: Binary a => d -> Guid -> a -> IO ()
+  delete :: d -> Guid -> IO ()
 
 readStoreIRef :: (Store d, Binary a) => d -> IRef a -> IO a
-readStoreIRef store = fmap fromJust . lookup store . Guid.bs . guid
+readStoreIRef store = fmap fromJust . lookup store . guid
 
 writeStoreIRef :: (Store d, Binary a) => d -> IRef a -> a -> IO ()
-writeStoreIRef store = insert store . Guid.bs . guid
+writeStoreIRef store = insert store . guid
 
 data StoreRef d a = StoreRef {
   refStore :: d,
@@ -62,7 +60,7 @@ composeLabel label (StoreRef store getter setter) = StoreRef store getter' sette
 newIRef :: (Store d, Binary a) => d -> a -> IO (IRef a)
 newIRef store val = do
   newGuid <- Guid.new
-  insert store (Guid.bs newGuid) val
+  insert store newGuid val
   return (unsafeFromGuid newGuid)
 
 fromIRef :: (Store d, Binary a) => d -> IRef a -> StoreRef d a

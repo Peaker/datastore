@@ -3,12 +3,13 @@
 module Db
     (Db, withDb,
      lookupBS, insertBS,
-     lookup,   insert,  del,
-     modifyBS, modify,
+     lookup, insert, delete,
      withCursor,
      nextKeyBS, nextKey)
 where
 
+import Data.Guid(Guid)
+import qualified Data.Guid as Guid
 import Data.Binary.Utils(encodeS, decodeS)
 import Control.Arrow(second)
 import Control.Exception(bracket)
@@ -56,28 +57,22 @@ nextKey cursor = (fmap . fmap . second) decodeS (nextKeyBS cursor)
 withDb :: FilePath -> (Db -> IO a) -> IO a
 withDb filePath = bracket (open filePath) close
 
-lookup :: Binary a => Db -> ByteString -> IO (Maybe a)
-lookup db key = (fmap . fmap) decodeS (lookupBS db key)
-
 lookupBS :: Db -> ByteString -> IO (Maybe ByteString)
 lookupBS db = Berkeley.db_get [] (dbBerkeley db) Nothing
-
-insert :: Binary a => Db -> ByteString -> a -> IO ()
-insert db key = insertBS db key . encodeS
 
 insertBS :: Db -> ByteString -> ByteString -> IO ()
 insertBS db = Berkeley.db_put [] (dbBerkeley db) Nothing
 
-modifyBS :: Db -> ByteString -> (Maybe ByteString -> ByteString) -> IO ()
-modifyBS db key f = insertBS db key =<< f `fmap` lookupBS db key
+lookup :: Binary a => Db -> Guid -> IO (Maybe a)
+lookup db = (fmap . fmap) decodeS . lookupBS db . Guid.bs
 
-modify :: Binary a => Db -> ByteString -> (Maybe a -> a) -> IO ()
-modify db key f = insert db key =<< f `fmap` lookup db key
+insert :: Binary a => Db -> Guid -> a -> IO ()
+insert db key = insertBS db (Guid.bs key) . encodeS
 
-del :: Db -> ByteString -> IO ()
-del db = Berkeley.db_del [] (dbBerkeley db) Nothing
+delete :: Db -> Guid -> IO ()
+delete db = Berkeley.db_del [] (dbBerkeley db) Nothing . Guid.bs
 
 instance IRef.Store Db where
   lookup = lookup
   insert = insert
-  delete = del
+  delete = delete

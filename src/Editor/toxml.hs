@@ -3,28 +3,24 @@
 module Main (main) where
 
 import qualified Db
-import Db(Db)
-import qualified Editor.Tree as Tree
-import qualified Db.Ref as Ref
-import qualified Graphics.UI.VtyWidgets.TextEdit as TextEdit
+import Data.IRef(IRef, Store)
+import qualified Data.IRef as IRef
 import System.IO(stdout, hPutStrLn, Handle)
-import Data.ByteString.UTF8(fromString)
-import qualified Data.Record.Label as Label
+import qualified Graphics.UI.VtyWidgets.TextEdit as TextEdit
+import qualified Editor.Data as Data
 
-writeTreeXml :: Db -> Handle -> Int -> Tree.Ref -> IO ()
-writeTreeXml db outFile depth ref = do
-  tree <- Ref.read db ref
-  value <- Ref.read db (Label.get Tree.nodeValueRef tree)
+writeTreeXml :: Store d => d -> Handle -> Int -> IRef Data.TreeD -> IO ()
+writeTreeXml store outFile depth iref = do
+  let ref = IRef.fromIRef store iref
+  value <- IRef.get =<< IRef.follow (Data.nodeValueRef `IRef.composeLabel` ref)
+  childrenIRefs <- IRef.get (Data.nodeChildrenRefs `IRef.composeLabel` ref)
   let text = TextEdit.textEditText . snd $ value
       indent = (replicate (2 * depth) ' ' ++)
   hPutStrLn outFile . indent $ "<" ++ text ++ ">"
-  mapM_ (writeTreeXml db outFile (depth + 1)) $
-    Label.get Tree.nodeChildrenRefs tree
+  mapM_ (writeTreeXml store outFile (depth + 1)) childrenIRefs
   hPutStrLn outFile . indent $ "</" ++ text ++ ">"
 
 main :: IO ()
 main =
-  Db.withDb "/tmp/db.db" $ \db -> do
-    Just root <- Db.lookup db (fromString "root")
-                 -- root :: Tree.Ref
-    writeTreeXml db stdout 0 root
+  Db.withDb "/tmp/db.db" $ \store ->
+    writeTreeXml store stdout 0 =<< IRef.get (Data.rootIRefRef store)
