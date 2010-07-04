@@ -4,7 +4,7 @@ module Data.Revision
     (Change(..), Version(..), View(..), ViewRef(..),
      makeInitialVersion,
      makeView, makeVersion, makeVersionOnView,
-     moveView, makeChange)
+     moveView, makeChange, viewRefVersion)
 where
 
 import Prelude hiding (lookup)
@@ -55,6 +55,14 @@ newtype View = View {
 data ViewRef d = ViewRef { viewRefStore :: d,
                            viewIRef :: IRef View }
   deriving (Eq, Ord)
+
+viewRefVersion :: Store d => ViewRef d -> IO Version
+viewRefVersion viewRef = do
+  let viewStoreRef = IRef.fromIRef store . viewIRef $ viewRef
+  View versionIRef <- IRef.get viewStoreRef
+  IRef.getIRef store versionIRef
+  where
+    store = viewRefStore viewRef
 
 viewKey :: ViewRef d -> ObjectKey -> ByteString
 viewKey = xorBS . Guid.bs . IRef.guid . viewIRef

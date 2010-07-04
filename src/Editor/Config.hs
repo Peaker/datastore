@@ -1,12 +1,13 @@
 {-# OPTIONS -fno-warn-missing-signatures #-}
 
 module Editor.Config(
-    quitKey, rootKey, appendChildKey, delChildKey, setViewRootKey, cutKey, pasteKey)
+    quitKey, undoKey, rootKey, appendChildKey, delChildKey, setViewRootKey, cutKey, pasteKey)
 where
 
 import qualified Graphics.Vty as Vty
 
 quitKey = ([Vty.MCtrl], Vty.KASCII 'q')
+undoKey = ([Vty.MCtrl], Vty.KASCII 'z')
 rootKey = ([Vty.MCtrl], Vty.KASCII 'r')
 appendChildKey = ([Vty.MCtrl], Vty.KASCII 'n')
 delChildKey = ([Vty.MCtrl], Vty.KASCII 'o')

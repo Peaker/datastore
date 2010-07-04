@@ -123,8 +123,17 @@ makeTextEdit maxLines defAttr editAttr textEditModelRef =
 main :: IO ()
 main = Db.withDb "/tmp/db.db" $ Run.widgetLoopWithOverlay . const . makeWidget
   where
-    makeWidget dbStore =
-      makeWidgetForView =<< Revision.ViewRef dbStore `fmap` IRef.get (Data.masterViewIRefRef dbStore)
+    makeWidget dbStore = do
+      masterViewRef <- Revision.ViewRef dbStore `fmap` IRef.get (Data.masterViewIRefRef dbStore)
+      undoKeymap <- makeUndoKeymap masterViewRef
+      Widget.strongerKeys undoKeymap `fmap` makeWidgetForView masterViewRef
+    makeUndoKeymap masterViewRef = do
+      mbParent <- Revision.versionParent `fmap` Revision.viewRefVersion masterViewRef
+      return $
+        maybe
+        mempty -- No parent, no undo
+        (Keymap.simpleton "Undo" Config.undoKey . Revision.moveView masterViewRef)
+        mbParent
 
 makeWidgetForView :: Store d => d -> IO (Widget (IO ()))
 makeWidgetForView store = do

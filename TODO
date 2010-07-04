@@ -1,5 +1,8 @@
 * IRef split to Store, StoreRef
 
+* Transactions to avoid intermediate versions
+  * Avoid undo beyond a "marked" version?
+
 * Folding, max-depth under which you jump to a new root
 
 * Maybe need 'overwrite selection' in TextEdit so that I can have the
