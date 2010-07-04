@@ -5,7 +5,8 @@ module Editor.Data(
     Tree(..), nodeValueRef, nodeChildrenRefs,
     ITree, ITreeD, TreeD, Data,
     makeValueRef, makeNodeRef, makeLeafRef,
-    clipboardIRefRef, rootIRefRef, viewRootIRefRef)
+    clipboardIRefRef, rootIRefRef,
+    viewRootIRefRef, masterViewIRefRef)
 where
 
 import Control.Monad(liftM2)
@@ -15,6 +16,7 @@ import Data.Binary(Binary(..))
 import qualified Graphics.UI.VtyWidgets.Grid as Grid
 import qualified Graphics.UI.VtyWidgets.TextEdit as TextEdit
 import Data.Record.Label((:->), mkLabels, label)
+import qualified Data.Revision as Revision
 
 type Data = ((Grid.Model, Grid.Model), TextEdit.Model)
 type ITreeD = ITree Data
@@ -37,6 +39,9 @@ rootIRefRef store = IRef.anchorRef store "root"
 
 viewRootIRefRef :: Store d => d -> StoreRef d ITreeD
 viewRootIRefRef store = IRef.anchorRef store "viewroot"
+
+masterViewIRefRef :: Store d => d -> StoreRef d (IRef Revision.View)
+masterViewIRefRef store = IRef.anchorRef store "master"
 
 instance Binary (Tree a) where
   put (Node value children) = put value >> put children

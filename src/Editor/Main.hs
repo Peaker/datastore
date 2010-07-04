@@ -8,6 +8,7 @@ import Control.Category((.))
 import Data.Record.Label.Tuple(first, second)
 import qualified Data.IRef as IRef
 import Data.IRef(IRef, Store, StoreRef, composeLabel)
+import qualified Data.Revision as Revision
 import Data.Monoid(mempty, mappend)
 import Data.Maybe(fromMaybe)
 import Data.Vector.Vector2(Vector2(..))
@@ -122,17 +123,30 @@ makeTextEdit maxLines defAttr editAttr textEditModelRef =
 main :: IO ()
 main = Db.withDb "/tmp/db.db" $ Run.widgetLoopWithOverlay . const . makeWidget
   where
-    makeWidget store = do
-      clipboardRef <- IRef.follow . Data.clipboardIRefRef $ store
-      rootIRef <- IRef.get . Data.rootIRefRef $ store
-      treeEdit <- makeTreeEdit store clipboardRef rootIRef
-      let treeEditWithKeys =
-            Widget.strongerKeys
-            (quitKeymap `mappend` goRootKeymap rootIRef)
-            treeEdit
-      return treeEditWithKeys
-      where
-        quitKeymap = Keymap.simpleton "Quit" Config.quitKey . ioError . userError $ "Quit"
-        goRootKeymap rootIRef =
-          Keymap.simpleton "Go to root" Config.rootKey $
-            IRef.set (Data.viewRootIRefRef store) rootIRef
+    makeWidget dbStore =
+      makeWidgetForView =<< Revision.ViewRef dbStore `fmap` IRef.get (Data.masterViewIRefRef dbStore)
+
+makeWidgetForView :: Store d => d -> IO (Widget (IO ()))
+makeWidgetForView store = do
+  viewRootIRef <- IRef.get viewRootIRefRef
+  clipboardRef <- IRef.follow . Data.clipboardIRefRef $ store
+  treeEdit <- makeTreeEdit store clipboardRef viewRootIRef
+  goRootKeymap <- makeGoRootKeymap
+  let treeEditWithKeys =
+        Widget.strongerKeys
+        (quitKeymap `mappend` goRootKeymap)
+        treeEdit
+  return treeEditWithKeys
+  where
+    viewRootIRefRef = Data.viewRootIRefRef store
+    rootIRefRef = Data.rootIRefRef $ store
+    quitKeymap = Keymap.simpleton "Quit" Config.quitKey . ioError . userError $ "Quit"
+    makeGoRootKeymap = do
+      rootIRef <- IRef.get rootIRefRef
+      viewRootIRef <- IRef.get viewRootIRefRef
+      return $
+        if viewRootIRef == rootIRef
+        then mempty
+        else Keymap.simpleton "Go to root" Config.rootKey .
+             IRef.set viewRootIRefRef $
+             rootIRef

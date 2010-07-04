@@ -2,15 +2,10 @@
 
 module Db
     (Db, withDb,
-     lookupBS, insertBS,
-     lookup, insert, delete,
-     withCursor,
-     nextKeyBS, nextKey)
+     withCursor, nextKeyBS, nextKey)
 where
 
-import Data.Guid(Guid)
-import qualified Data.Guid as Guid
-import Data.Binary.Utils(encodeS, decodeS)
+import Data.Binary.Utils(decodeS)
 import Control.Arrow(second)
 import Control.Exception(bracket)
 import Prelude hiding (lookup)
@@ -57,22 +52,7 @@ nextKey cursor = (fmap . fmap . second) decodeS (nextKeyBS cursor)
 withDb :: FilePath -> (Db -> IO a) -> IO a
 withDb filePath = bracket (open filePath) close
 
-lookupBS :: Db -> ByteString -> IO (Maybe ByteString)
-lookupBS db = Berkeley.db_get [] (dbBerkeley db) Nothing
-
-insertBS :: Db -> ByteString -> ByteString -> IO ()
-insertBS db = Berkeley.db_put [] (dbBerkeley db) Nothing
-
-lookup :: Binary a => Db -> Guid -> IO (Maybe a)
-lookup db = (fmap . fmap) decodeS . lookupBS db . Guid.bs
-
-insert :: Binary a => Db -> Guid -> a -> IO ()
-insert db key = insertBS db (Guid.bs key) . encodeS
-
-delete :: Db -> Guid -> IO ()
-delete db = Berkeley.db_del [] (dbBerkeley db) Nothing . Guid.bs
-
 instance IRef.Store Db where
-  lookup = lookup
-  insert = insert
-  delete = delete
+  lookupBS db = Berkeley.db_get [] (dbBerkeley db) Nothing
+  insertBS db = Berkeley.db_put [] (dbBerkeley db) Nothing
+  deleteBS db = Berkeley.db_del [] (dbBerkeley db) Nothing

@@ -24,6 +24,7 @@ Executable Editor
                        Data.Record.Label.Tuple,
                        Data.Guid,
                        Data.IRef,
+                       Data.Revision,
                        Db,
                        Editor.Data,
                        Editor.Config
@@ -40,6 +41,7 @@ Executable makedb
   Other-Modules:       Db,
                        Data.Random.Instances,
                        Data.ByteString.Utils,
+                       Data.Revision,
                        Editor.Data
   ghc-options:         -O2 -Wall
   main-is:             Editor/makedb.hs

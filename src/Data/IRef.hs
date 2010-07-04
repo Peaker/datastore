@@ -3,18 +3,20 @@
 
 module Data.IRef
     (IRef, guid, unsafeFromGuid, anchorIRef,
-     Store, lookup, insert, delete,
+     Store(..), lookup, insert, delete,
      StoreRef, refStore,
      get, set, modify, composeLabel,
-     newIRef, fromIRef, new, follow, anchorRef)
+     getIRef, setIRef, newIRef, fromIRef,
+     new, follow, anchorRef)
 where
 
 import Prelude hiding (read, lookup)
 import Data.Maybe(fromJust)
 import Data.Binary(Binary)
+import Data.Binary.Utils(encodeS, decodeS)
 import Data.Record.Label((:->))
 import qualified Data.Record.Label as Label
-import Data.ByteString.UTF8(fromString)
+import Data.ByteString.UTF8(ByteString, fromString)
 import Data.Guid(Guid(Guid))
 import qualified Data.Guid as Guid
 
@@ -31,9 +33,18 @@ anchorIRef :: (Binary a) => String -> IRef a
 anchorIRef = unsafeFromGuid . Guid . fromString
 
 class Store d where
-  lookup :: Binary a => d -> Guid -> IO (Maybe a)
-  insert :: Binary a => d -> Guid -> a -> IO ()
-  delete :: d -> Guid -> IO ()
+  lookupBS :: d -> ByteString -> IO (Maybe ByteString)
+  insertBS :: d -> ByteString -> ByteString -> IO ()
+  deleteBS :: d -> ByteString -> IO ()
+
+lookup :: (Store d, Binary a) => d -> Guid -> IO (Maybe a)
+lookup store = (fmap . fmap) decodeS . lookupBS store . Guid.bs
+
+insert :: (Store d, Binary a) => d -> Guid -> a -> IO ()
+insert store key = insertBS store (Guid.bs key) . encodeS
+
+delete :: Store d => d -> Guid -> IO ()
+delete store = deleteBS store . Guid.bs
 
 readStoreIRef :: (Store d, Binary a) => d -> IRef a -> IO a
 readStoreIRef store = fmap fromJust . lookup store . guid
@@ -56,6 +67,12 @@ composeLabel label (StoreRef store getter setter) = StoreRef store getter' sette
   where
     getter' = Label.get label `fmap` getter
     setter' x = setter . Label.set label x =<< getter
+
+getIRef :: (Store d, Binary a) => d -> IRef a -> IO a
+getIRef store = get . fromIRef store
+
+setIRef :: (Store d, Binary a) => d -> IRef a -> IO a
+setIRef store = get . fromIRef store
 
 newIRef :: (Store d, Binary a) => d -> a -> IO (IRef a)
 newIRef store val = do
