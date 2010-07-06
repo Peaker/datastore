@@ -118,7 +118,7 @@ makeGrid rows gridModelRef =
 makeTextEdit :: Int -> Vty.Attr -> Vty.Attr -> Store.Ref d TextEdit.Model -> IO (Widget (IO ()))
 makeTextEdit maxLines defAttr editAttr textEditModelRef =
   fmap (fmap (Store.set textEditModelRef) .
-        TextEdit.make maxLines defAttr editAttr) $
+        TextEdit.make "<empty>" maxLines defAttr editAttr) $
   Store.get textEditModelRef
 
 main :: IO ()
