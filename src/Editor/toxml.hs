@@ -5,6 +5,7 @@ module Main (main) where
 import qualified Db
 import Data.IRef(IRef)
 import Data.Store(Store)
+import Data.Map((!))
 import qualified Data.Store as Store
 import qualified Data.Revision as Revision
 import System.IO(stdout, hPutStrLn, Handle)
@@ -25,5 +26,5 @@ writeTreeXml store outFile depth iref = do
 main :: IO ()
 main =
   Db.withDb "/tmp/db.db" $ \dbStore -> do
-    viewRef <- Revision.ViewRef dbStore `fmap` Store.get (Data.masterViewIRefRef dbStore)
+    viewRef <- (Revision.ViewRef dbStore . (! "master")) `fmap` Store.get (Data.branchesRef dbStore)
     writeTreeXml viewRef stdout 0 =<< Store.get (Data.rootIRefRef viewRef)

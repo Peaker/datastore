@@ -6,10 +6,11 @@ module Editor.Data(
     ITree, ITreeD, TreeD, Data,
     makeValueRef, makeNodeRef, makeLeafRef,
     clipboardIRefRef, rootIRefRef,
-    viewRootIRefRef, masterViewIRefRef)
+    viewRootIRefRef, branchesRef)
 where
 
 import Control.Monad(liftM2)
+import Data.Map(Map)
 import Data.IRef(IRef)
 import Data.Store(Store)
 import qualified Data.Store as Store
@@ -35,14 +36,17 @@ nodeChildrenRefs :: Tree a :-> [IRef (Tree a)]
 clipboardIRefRef :: Store d => d -> Store.Ref d (IRef [ITreeD])
 clipboardIRefRef store = Store.anchorRef store "clipboard"
 
+-- Revision-store key
 rootIRefRef :: Store d => d -> Store.Ref d ITreeD
 rootIRefRef store = Store.anchorRef store "root"
 
+-- Revision-store key
 viewRootIRefRef :: Store d => d -> Store.Ref d ITreeD
 viewRootIRefRef store = Store.anchorRef store "viewroot"
 
-masterViewIRefRef :: Store d => d -> Store.Ref d (IRef Revision.View)
-masterViewIRefRef store = Store.anchorRef store "master"
+-- Db key
+branchesRef :: Store d => d -> Store.Ref d (Map String (IRef Revision.View))
+branchesRef store = Store.anchorRef store "branches"
 
 instance Binary (Tree a) where
   put (Node value children) = put value >> put children

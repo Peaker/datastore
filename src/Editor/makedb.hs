@@ -6,6 +6,7 @@ import qualified Data.Store as Store
 import Data.Store(Store)
 import qualified Data.Revision as Revision
 import qualified Data.Transaction as Transaction
+import qualified Data.Map as Map
 import qualified Db
 import qualified Editor.Data as Data
 
@@ -17,9 +18,9 @@ makeViewRef store = do
 main :: IO ()
 main =
   Db.withDb "/tmp/db.db" $ \dbStore -> do
-    viewRef <- makeViewRef dbStore
-    Store.set (Data.masterViewIRefRef dbStore) $ Revision.viewIRef viewRef
-    Transaction.withTransaction viewRef $ \store -> do
+    masterRef <- makeViewRef dbStore
+    Store.set (Data.branchesRef dbStore) $ Map.singleton "master" (Revision.viewIRef masterRef)
+    Transaction.withTransaction masterRef $ \store -> do
       childrenRefs <- mapM (Data.makeLeafRef store . show) [1..10 :: Int]
       rootIRef <- Data.makeNodeRef store "tree root value" childrenRefs
       Store.set (Data.rootIRefRef store) rootIRef

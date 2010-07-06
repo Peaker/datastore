@@ -1,18 +1,3 @@
-* Transactions to avoid intermediate versions
-
-  * All the StoreRef stuff is based on the store being available for
-    read/write. To create a widget, I want refs with read access, but
-    then only WHEN I want to write to them, I want to create a
-    transaction. That's too late to change the refs I have to another
-    store.  Wrapping the widget creation with withTransaction is
-    futile.
-  * Can just have an ugly makeTransaction and applyTransaction, and so
-    I can get a transaction store and add (>> applyTransaction) to the
-    Widget.
-
-  * For now just give up on transactions in the editor? I don't really
-    have anything to "transact" yet.
-
 * Explicit "branch" naming
 
   * Have right-hand-side show the named branches
@@ -23,7 +8,24 @@
     rev" which moves with the current rev to make sure there's just
     one tag per undo sequence)
 
-* Folding, max-depth under which you jump to a new root
+* Immutable key/value store (add only) interface?
+
+  * Can be pure if guaranteed exclusiveness
+
+    * IRef contains a safe hash
+
+    * addNew :: Value -> IRef Value
+
+      * Doesn't allow circular data-structures, do I need them?
+
+    * read :: IRef Value -> Value
+
+    * Revision uses pure interface for main store but mutable store
+      for the View cache and branches
+
+* Collapsing, max-depth under which you jump to a new root
+
+----------------------------------------
 
 * Interpret Tree as Code!
   * Scheme / Untyped Haskell

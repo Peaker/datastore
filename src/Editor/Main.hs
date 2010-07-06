@@ -5,12 +5,12 @@ module Main(main) where
 
 import Prelude hiding ((.))
 import Control.Category((.))
-import Control.Monad(liftM2)
 import Data.Record.Label.Tuple(first, second)
 import Data.IRef(IRef)
 import qualified Data.Store as Store
 import Data.Store(Store, composeLabel)
 import qualified Data.Revision as Revision
+import Data.Map((!))
 import Data.Monoid(mempty, mappend)
 import Data.Maybe(fromMaybe, fromJust)
 import Data.Vector.Vector2(Vector2(..))
@@ -125,12 +125,11 @@ main :: IO ()
 main = Db.withDb "/tmp/db.db" $ Run.widgetLoopWithOverlay . const . makeWidget
   where
     makeWidget dbStore = do
-      masterViewRef <- Revision.ViewRef dbStore `fmap` Store.get (Data.masterViewIRefRef dbStore)
+      branches <- Store.get (Data.branchesRef dbStore)
+      let masterViewRef = Revision.ViewRef dbStore (branches ! "master")
       undoKeymap <- makeUndoKeymap masterViewRef
-      widget <- makeWidgetForView masterViewRef
-      return .
-        Widget.strongerKeys (undoKeymap `mappend` quitKeymap) $
-        widget
+      Widget.strongerKeys (undoKeymap `mappend` quitKeymap) `fmap`
+        makeWidgetForView masterViewRef
     quitKeymap = Keymap.simpleton "Quit" Config.quitKey . ioError . userError $ "Quit"
     makeUndoKeymap masterViewRef = do
       version <- Revision.viewRefVersion masterViewRef
@@ -143,19 +142,26 @@ main = Db.withDb "/tmp/db.db" $ Run.widgetLoopWithOverlay . const . makeWidget
              version
         else mempty
 
-makeWidgetForView :: Store d => d -> IO (Widget (IO ()))
-makeWidgetForView store = do
+makeEditWidget :: Store d => d -> Store.Ref d [ITreeD] -> IO (Widget (IO ()))
+makeEditWidget store clipboardRef = do
+  rootIRef <- Store.get rootIRefRef
   viewRootIRef <- Store.get viewRootIRefRef
-  clipboardRef <- Store.follow . Data.clipboardIRefRef $ store
-  goRootKeymap <- liftM2 makeGoRootKeymap (Store.get rootIRefRef) (Store.get viewRootIRefRef)
   treeEdit <- makeTreeEdit store clipboardRef viewRootIRef
-  return $ Widget.strongerKeys goRootKeymap treeEdit
+  return .
+    Widget.strongerKeys (goRootKeymap rootIRef viewRootIRef) $
+    treeEdit
   where
     viewRootIRefRef = Data.viewRootIRefRef store
     rootIRefRef = Data.rootIRefRef store
-    makeGoRootKeymap rootIRef viewRootIRef =
+    goRootKeymap rootIRef viewRootIRef =
       if viewRootIRef == rootIRef
       then mempty
       else Keymap.simpleton "Go to root" Config.rootKey .
            Store.set viewRootIRefRef $
            rootIRef
+
+makeWidgetForView :: Store d => d -> IO (Widget (IO ()))
+makeWidgetForView store = do
+  clipboardRef <- Store.follow . Data.clipboardIRefRef $ store
+  widget <- makeEditWidget store clipboardRef
+  return widget
