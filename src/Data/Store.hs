@@ -66,6 +66,9 @@ composeLabel label (Ref store getter setter) = Ref store getter' setter'
     getter' = Label.get label `fmap` getter
     setter' x = setter . Label.set label x =<< getter
 
+fromIRef :: (Store d, Binary a) => d -> IRef a -> Ref d a
+fromIRef store iref = Ref store (readStoreIRef store iref) (writeStoreIRef store iref)
+
 getIRef :: (Store d, Binary a) => d -> IRef a -> IO a
 getIRef store = get . fromIRef store
 
@@ -77,9 +80,6 @@ newIRef store val = do
   newGuid <- Guid.new
   insert store newGuid val
   return (IRef.unsafeFromGuid newGuid)
-
-fromIRef :: (Store d, Binary a) => d -> IRef a -> Ref d a
-fromIRef store iref = Ref store (readStoreIRef store iref) (writeStoreIRef store iref)
 
 new :: (Store d, Binary a) => d -> a -> IO (IRef a, Ref d a)
 new store val = do

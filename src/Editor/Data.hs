@@ -4,13 +4,10 @@
 module Editor.Data(
     Tree(..), nodeValueRef, nodeChildrenRefs,
     ITree, ITreeD, TreeD, Data,
-    makeValueRef, makeNodeRef, makeLeafRef,
-    clipboardIRefRef, rootIRefRef,
-    viewRootIRefRef, branchesRef)
+    makeValueRef, makeNodeRef, makeLeafRef)
 where
 
 import Control.Monad(liftM2)
-import Data.Map(Map)
 import Data.IRef(IRef)
 import Data.Store(Store)
 import qualified Data.Store as Store
@@ -18,7 +15,6 @@ import Data.Binary(Binary(..))
 import qualified Graphics.UI.VtyWidgets.Grid as Grid
 import qualified Graphics.UI.VtyWidgets.TextEdit as TextEdit
 import Data.Record.Label((:->), mkLabels, label)
-import qualified Data.Revision as Revision
 
 type Data = ((Grid.Model, Grid.Model), TextEdit.Model)
 type ITreeD = ITree Data
@@ -32,21 +28,6 @@ data Tree a = Node {
 $(mkLabels [''Tree])
 nodeValueRef :: Tree a :-> IRef a
 nodeChildrenRefs :: Tree a :-> [IRef (Tree a)]
-
-clipboardIRefRef :: Store d => d -> Store.Ref d (IRef [ITreeD])
-clipboardIRefRef store = Store.anchorRef store "clipboard"
-
--- Revision-store key
-rootIRefRef :: Store d => d -> Store.Ref d ITreeD
-rootIRefRef store = Store.anchorRef store "root"
-
--- Revision-store key
-viewRootIRefRef :: Store d => d -> Store.Ref d ITreeD
-viewRootIRefRef store = Store.anchorRef store "viewroot"
-
--- Db key
-branchesRef :: Store d => d -> Store.Ref d (Map String (IRef Revision.View))
-branchesRef store = Store.anchorRef store "branches"
 
 instance Binary (Tree a) where
   put (Node value children) = put value >> put children

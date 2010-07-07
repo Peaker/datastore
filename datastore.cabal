@@ -30,6 +30,7 @@ Executable Editor
                        Data.Transaction,
                        Db,
                        Editor.Data,
+                       Editor.Anchors,
                        Editor.Config
   ghc-options:         -O2 -Wall
   main-is:             Editor/Main.hs
@@ -48,7 +49,8 @@ Executable makedb
                        Data.Transaction,
                        Data.IRef,
                        Data.Store,
-                       Editor.Data
+                       Editor.Data,
+                       Editor.Anchors
   ghc-options:         -O2 -Wall
   main-is:             Editor/makedb.hs
   ghc-prof-options:    -prof -auto-all
@@ -66,7 +68,8 @@ Executable toxml
                        Data.IRef,
                        Data.Store,
                        Db,
-                       Editor.Data
+                       Editor.Data,
+                       Editor.Anchors
   ghc-options:         -O2 -Wall
   main-is:             Editor/toxml.hs
   ghc-prof-options:    -prof -auto-all

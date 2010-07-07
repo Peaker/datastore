@@ -10,7 +10,6 @@ import Data.IRef(IRef)
 import qualified Data.Store as Store
 import Data.Store(Store, composeLabel)
 import qualified Data.Revision as Revision
-import Data.Map((!))
 import Data.Monoid(mempty, mappend)
 import Data.Maybe(fromMaybe, fromJust)
 import Data.Vector.Vector2(Vector2(..))
@@ -18,16 +17,17 @@ import qualified Data.Vector.Vector2 as Vector2
 import qualified Graphics.Vty as Vty
 import qualified Graphics.UI.VtyWidgets.TextEdit as TextEdit
 import qualified Graphics.UI.VtyWidgets.Grid as Grid
+import qualified Graphics.UI.VtyWidgets.Spacer as Spacer
 import qualified Graphics.UI.VtyWidgets.Widget as Widget
 import qualified Graphics.UI.VtyWidgets.Keymap as Keymap
 import Graphics.UI.VtyWidgets.Display(Display)
 import qualified Graphics.UI.VtyWidgets.SizeRange as SizeRange
-import qualified Graphics.UI.VtyWidgets.Spacer as Spacer
 import Graphics.UI.VtyWidgets.Widget(Widget)
 import qualified Graphics.UI.VtyWidgets.Run as Run
 import qualified Db
 import Editor.Data(ITreeD, TreeD, Tree, Data)
 import qualified Editor.Data as Data
+import qualified Editor.Anchors as Anchors
 import qualified Editor.Config as Config
 
 setViewRoot :: Store d => d -> IRef (Tree Data) -> IO ()
@@ -112,7 +112,7 @@ removeAt n xs = take n xs ++ drop (n+1) xs
 
 makeGrid :: [[Widget (IO ())]] -> Store.Ref d Grid.Model -> IO (Widget (IO ()))
 makeGrid rows gridModelRef =
-  fmap (Grid.make (Store.set gridModelRef) rows) $
+  Grid.make (Store.set gridModelRef) rows `fmap`
   Store.get gridModelRef
 
 makeTextEdit :: Int -> Vty.Attr -> Vty.Attr -> Store.Ref d TextEdit.Model -> IO (Widget (IO ()))
@@ -121,38 +121,53 @@ makeTextEdit maxLines defAttr editAttr textEditModelRef =
         TextEdit.make "<empty>" maxLines defAttr editAttr) $
   Store.get textEditModelRef
 
+makeChoiceWidget :: Store d =>
+                    [(Widget (IO ()), k)] ->
+                    Store.Ref d Grid.Model ->
+                    IO (Widget (IO ()), k)
+makeChoiceWidget keys gridModelRef = do
+  widget <- makeGrid rows gridModelRef
+  itemIndex <- (Vector2.snd .
+                Grid.modelCursor) `fmap` Store.get gridModelRef
+  return (widget, items !! min maxIndex itemIndex)
+  where
+    maxIndex = length items - 1
+    rows = map (: []) widgets
+    widgets = map fst keys
+    items = map snd keys
+
 main :: IO ()
 main = Db.withDb "/tmp/db.db" $ Run.widgetLoopWithOverlay . const . makeWidget
   where
     makeWidget dbStore = do
-      branches <- Store.get (Data.branchesRef dbStore)
-      let masterViewRef = Revision.ViewRef dbStore (branches ! "master")
-      undoKeymap <- makeUndoKeymap masterViewRef
-      Widget.strongerKeys (undoKeymap `mappend` quitKeymap) `fmap`
-        makeWidgetForView masterViewRef
+      branches <- Store.get $ Anchors.branches dbStore
+      pairs <- mapM (pair dbStore) branches
+      (branchSelector, viewIRef) <- makeChoiceWidget pairs $ Anchors.branchSelector dbStore
+      viewEdit <- Widget.strongerKeys quitKeymap `fmap`
+                  makeWidgetForView (Revision.ViewRef dbStore viewIRef)
+      makeGrid [[viewEdit, Widget.simpleDisplay Spacer.makeHorizontal,
+                 branchSelector]] $ Anchors.mainGrid dbStore
+
+    simpleTextEdit =
+      makeTextEdit 1
+      TextEdit.defaultAttr
+      TextEdit.editingAttr
+
+    pair dbStore (textEditModelIRef, viewIRef) = do
+      textEdit <- simpleTextEdit . Store.fromIRef dbStore $ textEditModelIRef
+      return (textEdit, viewIRef)
+
     quitKeymap = Keymap.simpleton "Quit" Config.quitKey . ioError . userError $ "Quit"
-    makeUndoKeymap masterViewRef = do
-      version <- Revision.viewRefVersion masterViewRef
-      return $
-        -- Don't allow undo behind first revision
-        if Revision.versionDepth version > 1
-        then Keymap.simpleton "Undo" Config.undoKey .
-             Revision.moveView masterViewRef .
-             fromJust . Revision.versionParent $
-             version
-        else mempty
 
 makeEditWidget :: Store d => d -> Store.Ref d [ITreeD] -> IO (Widget (IO ()))
 makeEditWidget store clipboardRef = do
   rootIRef <- Store.get rootIRefRef
   viewRootIRef <- Store.get viewRootIRefRef
-  treeEdit <- makeTreeEdit store clipboardRef viewRootIRef
-  return .
-    Widget.strongerKeys (goRootKeymap rootIRef viewRootIRef) $
-    treeEdit
+  Widget.strongerKeys (goRootKeymap rootIRef viewRootIRef) `fmap`
+    makeTreeEdit store clipboardRef viewRootIRef
   where
-    viewRootIRefRef = Data.viewRootIRefRef store
-    rootIRefRef = Data.rootIRefRef store
+    viewRootIRefRef = Anchors.viewRootIRef store
+    rootIRefRef = Anchors.rootIRef store
     goRootKeymap rootIRef viewRootIRef =
       if viewRootIRef == rootIRef
       then mempty
@@ -160,8 +175,16 @@ makeEditWidget store clipboardRef = do
            Store.set viewRootIRefRef $
            rootIRef
 
-makeWidgetForView :: Store d => d -> IO (Widget (IO ()))
-makeWidgetForView store = do
-  clipboardRef <- Store.follow . Data.clipboardIRefRef $ store
-  widget <- makeEditWidget store clipboardRef
-  return widget
+makeWidgetForView :: Store d => Revision.ViewRef d -> IO (Widget (IO ()))
+makeWidgetForView viewRef = do
+  clipboardRef <- Store.follow . Anchors.clipboardIRef $ viewRef
+  version <- Revision.viewRefVersion viewRef
+  let undoKeymap =
+        if Revision.versionDepth version > 1
+        then Keymap.simpleton "Undo" Config.undoKey .
+             Revision.moveView viewRef .
+             fromJust . Revision.versionParent $
+             version
+        else mempty
+  Widget.strongerKeys undoKeymap `fmap`
+    makeEditWidget viewRef clipboardRef

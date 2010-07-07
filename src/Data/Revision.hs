@@ -54,6 +54,8 @@ newtype View = View {
   viewVersion :: IRef Version
   }
   deriving (Eq, Ord, Binary)
+-- The IRef to the View is XOR'd with object keys to yield the IRef to
+-- each object's current version ref
 data ViewRef d = ViewRef { viewRefStore :: d,
                            viewIRef :: IRef View }
   deriving (Eq, Ord)

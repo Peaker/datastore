@@ -8,6 +8,9 @@
     rev" which moves with the current rev to make sure there's just
     one tag per undo sequence)
 
+* Add fromIRefDefault that replaces fromJust with fromMaybe -- remove
+  lots of code from makeDb and just add defaults to Anchors
+
 * Immutable key/value store (add only) interface?
 
   * Can be pure if guaranteed exclusiveness

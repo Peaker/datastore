@@ -5,12 +5,12 @@ module Main (main) where
 import qualified Db
 import Data.IRef(IRef)
 import Data.Store(Store)
-import Data.Map((!))
 import qualified Data.Store as Store
 import qualified Data.Revision as Revision
 import System.IO(stdout, hPutStrLn, Handle)
 import qualified Graphics.UI.VtyWidgets.TextEdit as TextEdit
 import qualified Editor.Data as Data
+import qualified Editor.Anchors as Anchors
 
 writeTreeXml :: Store d => d -> Handle -> Int -> IRef Data.TreeD -> IO ()
 writeTreeXml store outFile depth iref = do
@@ -26,5 +26,5 @@ writeTreeXml store outFile depth iref = do
 main :: IO ()
 main =
   Db.withDb "/tmp/db.db" $ \dbStore -> do
-    viewRef <- (Revision.ViewRef dbStore . (! "master")) `fmap` Store.get (Data.branchesRef dbStore)
-    writeTreeXml viewRef stdout 0 =<< Store.get (Data.rootIRefRef viewRef)
+    viewRef <- (Revision.ViewRef dbStore . snd . head) `fmap` Store.get (Anchors.branches dbStore)
+    writeTreeXml viewRef stdout 0 =<< Store.get (Anchors.rootIRef viewRef)
