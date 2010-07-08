@@ -9,6 +9,8 @@
 * Views are expensive, branches should really be just version irefs,
   and a single view should jump between them
 
+  * Currently deletion of branch leaks the entire view!
+
 * Have a reflog too
   * Implicit name for all Undo edges (carry around the "current undo
     rev" which moves with the current rev to make sure there's just

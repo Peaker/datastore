@@ -32,7 +32,7 @@ open fileName = do
   Berkeley.dbEnv_open [Berkeley.DB_CREATE, Berkeley.DB_INIT_MPOOL] 0 env envDir
   db <- Berkeley.db_create [] env
   Berkeley.db_open [Berkeley.DB_CREATE] Berkeley.DB_BTREE 0 db Nothing fileName (Just "DB title")
-  return (Db db env)
+  return $ Db db env
 
 close :: Db -> IO ()
 close (Db db env) = do
