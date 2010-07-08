@@ -1,3 +1,8 @@
+* Version should also be an IRef wrapper around VersionData, like View
+  and Branch?
+
+* Anchors to return IRef and not Ref?
+
 * Editor currently needs a transaction for append child:
 
   * For Transactions, I somehow need to be able to re-use a Ref for
@@ -6,11 +11,6 @@
     * Maybe need something like: FRef a b = FRef (IRef a) (a <-> b),
       that can be used with any store, instead of Store.Ref?
 
-* Views are expensive, branches should really be just version irefs,
-  and a single view should jump between them
-
-  * Currently deletion of branch leaks the entire view!
-
 * Have a reflog too
   * Implicit name for all Undo edges (carry around the "current undo
     rev" which moves with the current rev to make sure there's just
@@ -18,6 +18,12 @@
 
 * Add fromIRefDefault that replaces fromJust with fromMaybe -- remove
   lots of code from makeDb and just add defaults to Anchors
+
+* Crash resilience:
+  * Currently I might update a branch ptr, and crash before the view
+    was updated:
+    * Wrap view movements/etc with lower-layer transactions
+    * Use Berkeley transactions to implement storeChanges
 
 * Immutable key/value store (add only) interface?
 

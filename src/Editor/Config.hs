@@ -3,7 +3,7 @@
 module Editor.Config(
     quitKey, undoKey, rootKey, appendChildKey, delChildKey,
     setFocalPointKey, cutKey, pasteKey,
-    makeViewKey, delViewKey)
+    makeBranchKey, delBranchKey)
 where
 
 import qualified Graphics.Vty as Vty
@@ -16,5 +16,5 @@ delChildKey = ([Vty.MCtrl], Vty.KASCII 'o')
 setFocalPointKey = ([Vty.MCtrl], Vty.KASCII 'g')
 pasteKey = ([Vty.MCtrl], Vty.KASCII 'v')
 cutKey = ([Vty.MCtrl], Vty.KASCII 'x')
-makeViewKey = ([Vty.MCtrl], Vty.KASCII 's')
-delViewKey = ([Vty.MCtrl], Vty.KASCII 'o')
+makeBranchKey = ([Vty.MCtrl], Vty.KASCII 's')
+delBranchKey = ([Vty.MCtrl], Vty.KASCII 'o')

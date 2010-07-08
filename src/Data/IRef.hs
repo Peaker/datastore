@@ -12,7 +12,7 @@ import Data.Guid(Guid(Guid))
 newtype IRef a = IRef {
   guid :: Guid
   }
-  deriving (Eq, Ord, Binary)
+  deriving (Eq, Ord, Binary, Read, Show)
 
 -- Wrapper modules need to create an IRef
 unsafeFromGuid :: Guid -> IRef a

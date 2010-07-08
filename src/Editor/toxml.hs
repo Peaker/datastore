@@ -5,8 +5,8 @@ module Main (main) where
 import qualified Db
 import Data.IRef(IRef)
 import Data.Store(Store)
+import qualified Data.Rev.View as View
 import qualified Data.Store as Store
-import qualified Data.Revision as Revision
 import System.IO(stdout, hPutStrLn, Handle)
 import qualified Graphics.UI.VtyWidgets.TextEdit as TextEdit
 import qualified Editor.Data as Data
@@ -23,8 +23,12 @@ writeTreeXml store outFile depth iref = do
   mapM_ (writeTreeXml store outFile (depth + 1)) childrenIRefs
   hPutStrLn outFile . indent $ "</" ++ text ++ ">"
 
+printXml :: Store d => d -> IO ()
+printXml dbStore = do
+  versionMap <- Store.get (Anchors.versionMap dbStore)
+  branch <- (snd . head) `fmap` Store.get (Anchors.branches dbStore)
+  let view = View.make dbStore versionMap branch
+  writeTreeXml view stdout 0 =<< Store.get (Anchors.rootIRef view)
+
 main :: IO ()
-main =
-  Db.withDb "/tmp/db.db" $ \dbStore -> do
-    viewRef <- (Revision.ViewRef dbStore . snd . head) `fmap` Store.get (Anchors.views dbStore)
-    writeTreeXml viewRef stdout 0 =<< Store.get (Anchors.rootIRef viewRef)
+main = Db.withDb "/tmp/db.db" printXml

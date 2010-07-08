@@ -8,7 +8,7 @@ module Data.Store
      Ref, refStore,
      get, set, modify, composeLabel,
      getIRef, setIRef, newIRef, fromIRef,
-     new, follow, anchorRef)
+     new, followBy, follow, anchorRef)
 where
 
 import Prelude hiding (lookup)
@@ -86,10 +86,13 @@ new store val = do
   iref <- newIRef store val
   return (iref, fromIRef store iref)
 
+followBy :: (Store d, Binary a) => (b -> IRef a) -> Ref d b -> IO (Ref d a)
+followBy conv storeRef = (fromIRef (refStore storeRef) . conv) `fmap` get storeRef
+
 -- Dereference the *current* value of the IRef (Will not track new
 -- values of IRef, by-value and not by-name)
 follow :: (Store d, Binary a) => Ref d (IRef a) -> IO (Ref d a)
-follow storeRef = fromIRef (refStore storeRef) `fmap` get storeRef
+follow = followBy id
 
 anchorRef :: (Store d, Binary a) => d -> String -> Ref d a
 anchorRef store = fromIRef store . IRef.anchorIRef

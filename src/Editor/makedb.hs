@@ -3,8 +3,10 @@
 module Main (main) where
 
 import qualified Data.Store as Store
-import Data.Store(Store)
-import qualified Data.Revision as Revision
+import qualified Data.Rev.Version as Version
+import qualified Data.Rev.VersionMap as VersionMap
+import qualified Data.Rev.View as View
+import qualified Data.Rev.Branch as Branch
 import qualified Data.Transaction as Transaction
 import qualified Db
 import qualified Editor.Data as Data
@@ -12,24 +14,27 @@ import qualified Editor.Anchors as Anchors
 import qualified Graphics.UI.VtyWidgets.Grid as Grid
 import qualified Graphics.UI.VtyWidgets.TextEdit as TextEdit
 
-makeViewRef :: Store d => d -> IO (Revision.ViewRef d)
-makeViewRef store = do
-  versionIRef <- Revision.makeInitialVersion store
-  Revision.makeView store versionIRef
-
 main :: IO ()
 main =
   Db.withDb "/tmp/db.db" $ \dbStore -> do
-    masterRef <- makeViewRef dbStore
+    initialVersionIRef <- Version.makeInitialVersion dbStore
 
-    viewNameIRef <- Store.newIRef dbStore $ TextEdit.initModel "master"
-    Store.set (Anchors.views dbStore)
-      [(viewNameIRef, Revision.viewIRef masterRef)]
-    Store.set (Anchors.viewSelector dbStore) Grid.initModel
+    masterNameIRef <- Store.newIRef dbStore $ TextEdit.initModel "master"
+    master <- Branch.new dbStore initialVersionIRef
+
+    versionMap <- VersionMap.new dbStore initialVersionIRef
+    let view = View.make dbStore versionMap master
+
+    -- Db-level anchors
+    Store.set (Anchors.branches dbStore) [(masterNameIRef, master)]
+    Store.set (Anchors.versionMap dbStore) $ versionMap
+    Store.set (Anchors.branchSelector dbStore) Grid.initModel
     Store.set (Anchors.mainGrid dbStore) Grid.initModel
-    Transaction.withTransaction masterRef $ \store -> do
+
+    Transaction.withTransaction view $ \store -> do
       childrenRefs <- mapM (Data.makeLeafRef store . show) [1..10 :: Int]
       rootIRef <- Data.makeNodeRef store "tree root value" childrenRefs
       Store.set (Anchors.rootIRef store) rootIRef
       Store.set (Anchors.focalPointIRef store) rootIRef
       Store.set (Anchors.clipboardIRef store) =<< Store.newIRef store []
+

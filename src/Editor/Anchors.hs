@@ -1,14 +1,15 @@
 module Editor.Anchors(
     clipboardIRef, rootIRef,
-    focalPointIRef, views,
-    viewSelector, mainGrid)
+    focalPointIRef, branches,
+    branchSelector, versionMap, mainGrid)
 where
 
 import Data.Binary(Binary)
 import Data.IRef(IRef)
 import Data.Store(Store)
 import qualified Data.Store as Store
-import qualified Data.Revision as Revision
+import Data.Rev.Branch(Branch)
+import Data.Rev.VersionMap(VersionMap)
 import Editor.Data(ITreeD)
 import qualified Graphics.UI.VtyWidgets.Grid as Grid
 import qualified Graphics.UI.VtyWidgets.TextEdit as TextEdit
@@ -25,14 +26,17 @@ rootIRef = makeAnchor "root"
 
 -- Revision-store key
 focalPointIRef :: Store d => d -> Store.Ref d ITreeD
-focalPointIRef = makeAnchor "viewroot"
+focalPointIRef = makeAnchor "focalPoint"
 
 -- Db key
-views :: Store d => d -> Store.Ref d [(IRef TextEdit.Model, IRef Revision.View)]
-views = makeAnchor "views"
+branches :: Store d => d -> Store.Ref d [(IRef TextEdit.Model, Branch)]
+branches = makeAnchor "branches"
 
-viewSelector :: Store d => d -> Store.Ref d Grid.Model
-viewSelector = makeAnchor "viewSelector"
+branchSelector :: Store d => d -> Store.Ref d Grid.Model
+branchSelector = makeAnchor "branchSelector"
+
+versionMap :: Store d => d -> Store.Ref d VersionMap
+versionMap = makeAnchor "HEAD"
 
 mainGrid :: Store d => d -> Store.Ref d Grid.Model
 mainGrid = makeAnchor "GUI.mainGrid"

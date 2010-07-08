@@ -11,7 +11,10 @@ import Data.Record.Label.Tuple(first, second)
 import Data.IRef(IRef)
 import qualified Data.Store as Store
 import Data.Store(Store, composeLabel)
-import qualified Data.Revision as Revision
+import qualified Data.Rev.View as View
+import Data.Rev.View(View)
+import qualified Data.Rev.Version as Version
+import qualified Data.Rev.Branch as Branch
 import Data.Monoid(mempty, mappend)
 import Data.Maybe(fromMaybe, fromJust)
 import Data.Vector.Vector2(Vector2(..))
@@ -64,8 +67,12 @@ popCurChild gridModelRef valuesRef = do
       when (curIndex >= length values - 1) .
         Store.modify gridModelRef . Grid.inModel . Vector2.second $ subtract 1
 
-makeTreeEdit :: Store d => Revision.ViewRef d -> Revision.Ref d [ITreeD] -> IRef TreeD -> IO (Widget (IO ()))
-makeTreeEdit viewRef clipboardRef treeIRef = do
+makeTreeEdit :: Store d =>
+                View d ->
+                Store.Ref (View d) [ITreeD] ->
+                IRef TreeD ->
+                IO (Widget (IO ()))
+makeTreeEdit view clipboardRef treeIRef = do
   valueRef <- Store.follow $ Data.nodeValueRef `composeLabel` treeRef
   makeTreeEdit'
     (second `composeLabel` valueRef)
@@ -73,7 +80,7 @@ makeTreeEdit viewRef clipboardRef treeIRef = do
     (first . first `composeLabel` valueRef)
     (Data.nodeChildrenRefs `composeLabel` treeRef)
   where
-    treeRef = Store.fromIRef viewRef treeIRef
+    treeRef = Store.fromIRef view treeIRef
     makeTreeEdit'
       valueTextEditModelRef
       childrenGridModelRef
@@ -83,7 +90,7 @@ makeTreeEdit viewRef clipboardRef treeIRef = do
         valueEdit <- makeTextEdit 2
                      TextEdit.defaultAttr TextEdit.editingAttr
                      valueTextEditModelRef
-        childItems <- mapM (makeTreeEdit viewRef clipboardRef) =<< Store.get childrenIRefsRef
+        childItems <- mapM (makeTreeEdit view clipboardRef) =<< Store.get childrenIRefsRef
         curChildIndex <- getChildIndex . length $ childItems
         childGrid <- makeGrid (map (: []) childItems) childrenGridModelRef
         let childGrid' = (Widget.strongerKeys $
@@ -118,10 +125,10 @@ makeTreeEdit viewRef clipboardRef treeIRef = do
                         fmap (Keymap.simpleton "Del node" Config.delChildKey . delChild)
         setRootKeymap =
           Keymap.simpleton "Set focal point" Config.setFocalPointKey $
-            setFocalPoint viewRef treeIRef
+            setFocalPoint view treeIRef
         appendNewChild = do
           -- TODO: Transaction here
-          newRef <- Data.makeLeafRef viewRef "NEW_NODE"
+          newRef <- Data.makeLeafRef view "NEW_NODE"
           appendChild newRef
         appendChild newRef = do
           appendGridChild childrenGridModelRef childrenIRefsRef newRef
@@ -163,25 +170,26 @@ main :: IO ()
 main = Db.withDb "/tmp/db.db" $ Run.widgetLoopWithOverlay 20 30 . const . makeWidget
   where
     makeWidget dbStore = do
-      views <- Store.get $ Anchors.views dbStore
-      pairs <- mapM (pair dbStore) views
-      (viewSelector, viewIRef) <- makeChoiceWidget pairs $ Anchors.viewSelector dbStore
-      let viewRef = Revision.ViewRef dbStore viewIRef
+      versionMap <- Store.get $ Anchors.versionMap dbStore
+      branches <- Store.get $ Anchors.branches dbStore
+      pairs <- mapM (pair dbStore) branches
+      (viewSelector, branch) <- makeChoiceWidget pairs $ Anchors.branchSelector dbStore
+      let view = View.make dbStore versionMap branch
       viewEdit <- Widget.strongerKeys quitKeymap
-                  `fmap` makeWidgetForView dbStore viewRef
+                  `fmap` makeWidgetForView dbStore view
       makeGrid
         [[viewEdit,
           Widget.simpleDisplay Spacer.makeHorizontal,
-          Widget.strongerKeys (delViewKeymap views dbStore)
+          Widget.strongerKeys (delBranchKeymap branches dbStore)
           viewSelector]] $
         Anchors.mainGrid dbStore
 
-    delViewKeymap [_] = mempty
-    delViewKeymap _ = Keymap.simpleton "Delete View" Config.delViewKey . deleteCurView
+    delBranchKeymap [_] = mempty
+    delBranchKeymap _ = Keymap.simpleton "Delete Branch" Config.delBranchKey . deleteCurBranch
     quitKeymap = Keymap.simpleton "Quit" Config.quitKey . ioError . userError $ "Quit"
 
-    deleteCurView dbStore = do
-      _ <- popCurChild (Anchors.viewSelector dbStore) (Anchors.views dbStore)
+    deleteCurBranch dbStore = do
+      _ <- popCurChild (Anchors.branchSelector dbStore) (Anchors.branches dbStore)
       return ()
 
     simpleTextEdit =
@@ -189,20 +197,22 @@ main = Db.withDb "/tmp/db.db" $ Run.widgetLoopWithOverlay 20 30 . const . makeWi
       TextEdit.defaultAttr
       TextEdit.editingAttr
 
-    pair dbStore (textEditModelIRef, viewIRef) = do
+    pair dbStore (textEditModelIRef, versionIRef) = do
       textEdit <- simpleTextEdit . Store.fromIRef dbStore $ textEditModelIRef
-      return (textEdit, viewIRef)
+      return (textEdit, versionIRef)
 
-makeEditWidget :: Store d => Revision.ViewRef d -> Revision.Ref d [ITreeD] ->
+makeEditWidget :: Store d =>
+                  View d ->
+                  Store.Ref (View d) [ITreeD] ->
                   IO (Widget (IO ()))
-makeEditWidget viewRef clipboardRef = do
+makeEditWidget view clipboardRef = do
   rootIRef <- Store.get rootIRefRef
   focalPointIRef <- Store.get focalPointIRefRef
   Widget.strongerKeys (goRootKeymap rootIRef focalPointIRef) `fmap`
-    makeTreeEdit viewRef clipboardRef focalPointIRef
+    makeTreeEdit view clipboardRef focalPointIRef
   where
-    focalPointIRefRef = Anchors.focalPointIRef viewRef
-    rootIRefRef = Anchors.rootIRef viewRef
+    focalPointIRefRef = Anchors.focalPointIRef view
+    rootIRefRef = Anchors.rootIRef view
     goRootKeymap rootIRef focalPointIRef =
       if focalPointIRef == rootIRef
       then mempty
@@ -210,24 +220,24 @@ makeEditWidget viewRef clipboardRef = do
            Store.set focalPointIRefRef $
            rootIRef
 
-makeWidgetForView :: Store d => d -> Revision.ViewRef d -> IO (Widget (IO ()))
-makeWidgetForView store viewRef = do
-  clipboardRef <- Store.follow . Anchors.clipboardIRef $ viewRef
-  version <- Revision.viewRefVersion viewRef
+makeWidgetForView :: Store d => d -> View d -> IO (Widget (IO ()))
+makeWidgetForView store view = do
+  clipboardRef <- Store.follow . Anchors.clipboardIRef $ view
+  version <- View.curVersion view
   Widget.strongerKeys (keymaps version) `fmap`
-    makeEditWidget viewRef clipboardRef
+    makeEditWidget view clipboardRef
   where
-    keymaps version = undoKeymap version `mappend` makeViewKeymap
-    makeViewKeymap = Keymap.simpleton "New View" Config.makeViewKey makeView
-    makeView = do
-      newViewRef <- Revision.makeView store =<< Revision.viewRefVersionIRef viewRef
+    keymaps version = undoKeymap version `mappend` makeBranchKeymap
+    makeBranchKeymap = Keymap.simpleton "New Branch" Config.makeBranchKey makeBranch
+    makeBranch = do
+      versionIRef <- Branch.new (View.store view) =<< View.curVersionIRef view
       textEditModelIRef <- Store.newIRef store $ TextEdit.initModel "New view"
-      let viewPair = (textEditModelIRef, Revision.viewIRef newViewRef)
-      appendGridChild (Anchors.viewSelector store) (Anchors.views store) viewPair
+      let viewPair = (textEditModelIRef, versionIRef)
+      appendGridChild (Anchors.branchSelector store) (Anchors.branches store) viewPair
     undoKeymap version =
-        if Revision.versionDepth version > 1
+        if Version.depth version > 1
         then Keymap.simpleton "Undo" Config.undoKey .
-             Revision.moveView viewRef .
-             fromJust . Revision.versionParent $
+             View.move view .
+             fromJust . Version.parent $
              version
         else mempty
