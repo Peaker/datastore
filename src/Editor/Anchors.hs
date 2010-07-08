@@ -1,6 +1,6 @@
 module Editor.Anchors(
     clipboardIRef, rootIRef,
-    viewRootIRef, branches,
+    focalPointIRef, branches,
     branchSelector, mainGrid)
 where
 
@@ -24,8 +24,8 @@ rootIRef :: Store d => d -> Store.Ref d ITreeD
 rootIRef = makeAnchor "root"
 
 -- Revision-store key
-viewRootIRef :: Store d => d -> Store.Ref d ITreeD
-viewRootIRef = makeAnchor "viewroot"
+focalPointIRef :: Store d => d -> Store.Ref d ITreeD
+focalPointIRef = makeAnchor "viewroot"
 
 -- Db key
 branches :: Store d => d -> Store.Ref d [(IRef TextEdit.Model, IRef Revision.View)]

@@ -31,5 +31,5 @@ main =
       childrenRefs <- mapM (Data.makeLeafRef store . show) [1..10 :: Int]
       rootIRef <- Data.makeNodeRef store "tree root value" childrenRefs
       Store.set (Anchors.rootIRef store) rootIRef
-      Store.set (Anchors.viewRootIRef store) rootIRef
+      Store.set (Anchors.focalPointIRef store) rootIRef
       Store.set (Anchors.clipboardIRef store) =<< Store.newIRef store []

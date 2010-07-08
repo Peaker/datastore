@@ -30,8 +30,8 @@ import qualified Editor.Data as Data
 import qualified Editor.Anchors as Anchors
 import qualified Editor.Config as Config
 
-setViewRoot :: Store d => d -> IRef (Tree Data) -> IO ()
-setViewRoot store = Store.set (Store.anchorRef store "viewroot")
+setFocalPoint :: Store d => d -> IRef (Tree Data) -> IO ()
+setFocalPoint store = Store.set (Store.anchorRef store "viewroot")
 
 indent :: Int -> Display a -> Display a
 indent width disp = Grid.makeView [[Spacer.make (SizeRange.fixedSize (Vector2 width 0)), disp]]
@@ -89,8 +89,8 @@ makeTreeEdit store clipboardRef treeIRef = do
         delNodeKeymap = fromMaybe mempty .
                         fmap (Keymap.simpleton "Del node" Config.delChildKey . delChild)
         setRootKeymap =
-          Keymap.simpleton "Set root element" Config.setViewRootKey $
-            setViewRoot store treeIRef
+          Keymap.simpleton "Set focal point" Config.setFocalPointKey $
+            setFocalPoint store treeIRef
         yGridCursor = Grid.Model . Vector2 0
         appendNewChild = do
           newRef <- Data.makeLeafRef store "NEW_NODE"
@@ -162,17 +162,17 @@ main = Db.withDb "/tmp/db.db" $ Run.widgetLoopWithOverlay . const . makeWidget
 makeEditWidget :: Store d => d -> Store.Ref d [ITreeD] -> IO (Widget (IO ()))
 makeEditWidget store clipboardRef = do
   rootIRef <- Store.get rootIRefRef
-  viewRootIRef <- Store.get viewRootIRefRef
-  Widget.strongerKeys (goRootKeymap rootIRef viewRootIRef) `fmap`
-    makeTreeEdit store clipboardRef viewRootIRef
+  focalPointIRef <- Store.get focalPointIRefRef
+  Widget.strongerKeys (goRootKeymap rootIRef focalPointIRef) `fmap`
+    makeTreeEdit store clipboardRef focalPointIRef
   where
-    viewRootIRefRef = Anchors.viewRootIRef store
+    focalPointIRefRef = Anchors.focalPointIRef store
     rootIRefRef = Anchors.rootIRef store
-    goRootKeymap rootIRef viewRootIRef =
-      if viewRootIRef == rootIRef
+    goRootKeymap rootIRef focalPointIRef =
+      if focalPointIRef == rootIRef
       then mempty
       else Keymap.simpleton "Go to root" Config.rootKey .
-           Store.set viewRootIRefRef $
+           Store.set focalPointIRefRef $
            rootIRef
 
 makeWidgetForView :: Store d => Revision.ViewRef d -> IO (Widget (IO ()))
