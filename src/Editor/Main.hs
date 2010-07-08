@@ -56,7 +56,7 @@ popCurChild gridModelRef valuesRef = do
   curIndex <- (Vector2.snd . Grid.modelCursor) `fmap`
               Store.get gridModelRef
   let value = curIndex `safeIndex` values
-  maybe (return ()) (delChild curIndex values) $ value
+  maybe (return ()) (delChild curIndex values) value
   return value
   where
     delChild curIndex values _child = do
@@ -218,7 +218,7 @@ makeWidgetForView store viewRef = do
     makeEditWidget viewRef clipboardRef
   where
     keymaps version = undoKeymap version `mappend` makeViewKeymap
-    makeViewKeymap = Keymap.simpleton "New View" Config.makeViewKey $ makeView
+    makeViewKeymap = Keymap.simpleton "New View" Config.makeViewKey makeView
     makeView = do
       newViewRef <- Revision.makeView store =<< Revision.viewRefVersionIRef viewRef
       textEditModelIRef <- Store.newIRef store $ TextEdit.initModel "New view"

@@ -132,8 +132,8 @@ mostRecentAncestor :: Store d => d -> IRef Version -> IRef Version -> IO (IRef V
 mostRecentAncestor store aIRef bIRef
   | aIRef == bIRef  = return aIRef
   | otherwise       = do
-    a <- Store.getIRef store $ aIRef
-    b <- Store.getIRef store $ bIRef
+    a <- Store.getIRef store aIRef
+    b <- Store.getIRef store bIRef
     climb a b
   where
     climb
@@ -148,7 +148,7 @@ walkUp :: Store d => d -> (Version -> IO ()) -> IRef Version -> IRef Version -> 
 walkUp store onVersion topRef bottomRef
   | bottomRef == topRef  = return ()
   | otherwise            = do
-    version <- Store.getIRef store $ bottomRef
+    version <- Store.getIRef store bottomRef
     onVersion version
     maybe (fail "Invalid path given, hit top") (walkUp store onVersion topRef) $
       versionParent version
@@ -162,7 +162,7 @@ versionsBetween store topRef bottomRef = accumulateWalkUp [] bottomRef
     accumulateWalkUp vs curRef
       | topRef == curRef  = return vs
       | otherwise         = do
-        version <- Store.getIRef store $ curRef
+        version <- Store.getIRef store curRef
         maybe (fail "Invalid path given, hit top") (accumulateWalkUp (version:vs)) $
           versionParent version
 

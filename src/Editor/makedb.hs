@@ -23,7 +23,7 @@ main =
     masterRef <- makeViewRef dbStore
 
     viewNameIRef <- Store.newIRef dbStore $ TextEdit.initModel "master"
-    Store.set (Anchors.views dbStore) $
+    Store.set (Anchors.views dbStore)
       [(viewNameIRef, Revision.viewIRef masterRef)]
     Store.set (Anchors.viewSelector dbStore) Grid.initModel
     Store.set (Anchors.mainGrid dbStore) Grid.initModel
