@@ -1,9 +1,15 @@
-* Explicit "branch" naming
+* Editor currently needs a transaction for append child:
 
-  * Have right-hand-side show the named branches
+  * For Transactions, I somehow need to be able to re-use a Ref for
+    "d" as a Ref for "Transaction d"
 
-  * Have a reflog too
+    * Maybe need something like: FRef a b = FRef (IRef a) (a <-> b),
+      that can be used with any store, instead of Store.Ref?
 
+* Views are expensive, branches should really be just version irefs,
+  and a single view should jump between them
+
+* Have a reflog too
   * Implicit name for all Undo edges (carry around the "current undo
     rev" which moves with the current rev to make sure there's just
     one tag per undo sequence)

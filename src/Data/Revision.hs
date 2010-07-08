@@ -1,7 +1,7 @@
 {-# OPTIONS -O2 -Wall #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving, TypeOperators, TemplateHaskell #-}
 module Data.Revision
-    (Change(..), Version(..), View(..), ViewRef(..),
+    (Change(..), Version(..), View(..), ViewRef(..), Ref,
      makeInitialVersion,
      makeView, makeVersion, makeVersionOnView,
      moveView, makeChange, viewRefVersionIRef, viewRefVersion)
@@ -59,6 +59,8 @@ newtype View = View {
 data ViewRef d = ViewRef { viewRefStore :: d,
                            viewIRef :: IRef View }
   deriving (Eq, Ord)
+
+type Ref d = Store.Ref (ViewRef d)
 
 viewRefVersionIRef :: Store d => ViewRef d -> IO (IRef Version)
 viewRefVersionIRef viewRef =
