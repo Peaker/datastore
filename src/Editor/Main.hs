@@ -140,13 +140,19 @@ main :: IO ()
 main = Db.withDb "/tmp/db.db" $ Run.widgetLoopWithOverlay . const . makeWidget
   where
     makeWidget dbStore = do
-      branches <- Store.get $ Anchors.branches dbStore
-      pairs <- mapM (pair dbStore) branches
-      (branchSelector, viewIRef) <- makeChoiceWidget pairs $ Anchors.branchSelector dbStore
-      viewEdit <- Widget.strongerKeys quitKeymap `fmap`
-                  makeWidgetForView (Revision.ViewRef dbStore viewIRef)
-      makeGrid [[viewEdit, Widget.simpleDisplay Spacer.makeHorizontal,
-                 branchSelector]] $ Anchors.mainGrid dbStore
+      views <- Store.get $ Anchors.views dbStore
+      pairs <- mapM (pair dbStore) views
+      (viewSelector, viewIRef) <- makeChoiceWidget pairs $ Anchors.viewSelector dbStore
+      let viewRef = Revision.ViewRef dbStore viewIRef
+      viewEdit <- Widget.strongerKeys quitKeymap
+                  `fmap` makeWidgetForView dbStore viewRef
+      makeGrid
+        [[viewEdit,
+          Widget.simpleDisplay Spacer.makeHorizontal,
+          viewSelector]] $
+        Anchors.mainGrid dbStore
+
+    quitKeymap = Keymap.simpleton "Quit" Config.quitKey . ioError . userError $ "Quit"
 
     simpleTextEdit =
       makeTextEdit 1
@@ -156,8 +162,6 @@ main = Db.withDb "/tmp/db.db" $ Run.widgetLoopWithOverlay . const . makeWidget
     pair dbStore (textEditModelIRef, viewIRef) = do
       textEdit <- simpleTextEdit . Store.fromIRef dbStore $ textEditModelIRef
       return (textEdit, viewIRef)
-
-    quitKeymap = Keymap.simpleton "Quit" Config.quitKey . ioError . userError $ "Quit"
 
 makeEditWidget :: Store d => d -> Store.Ref d [ITreeD] -> IO (Widget (IO ()))
 makeEditWidget store clipboardRef = do
@@ -175,16 +179,24 @@ makeEditWidget store clipboardRef = do
            Store.set focalPointIRefRef $
            rootIRef
 
-makeWidgetForView :: Store d => Revision.ViewRef d -> IO (Widget (IO ()))
-makeWidgetForView viewRef = do
+makeWidgetForView :: Store d => d -> Revision.ViewRef d -> IO (Widget (IO ()))
+makeWidgetForView store viewRef = do
   clipboardRef <- Store.follow . Anchors.clipboardIRef $ viewRef
   version <- Revision.viewRefVersion viewRef
-  let undoKeymap =
+  Widget.strongerKeys (keymaps version) `fmap`
+    makeEditWidget viewRef clipboardRef
+  where
+    keymaps version = undoKeymap version `mappend` makeViewKeymap
+    makeViewKeymap = Keymap.simpleton "New View" Config.makeViewKey $ makeView
+    makeView = do
+      newViewRef <- Revision.makeView store =<< Revision.viewRefVersionIRef viewRef
+      textEditModelIRef <- Store.newIRef store $ TextEdit.initModel "New view"
+      let viewPair = (textEditModelIRef, Revision.viewIRef newViewRef)
+      Store.modify (Anchors.views store) (++ [viewPair])
+    undoKeymap version =
         if Revision.versionDepth version > 1
         then Keymap.simpleton "Undo" Config.undoKey .
              Revision.moveView viewRef .
              fromJust . Revision.versionParent $
              version
         else mempty
-  Widget.strongerKeys undoKeymap `fmap`
-    makeEditWidget viewRef clipboardRef

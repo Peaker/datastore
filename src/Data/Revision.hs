@@ -4,7 +4,7 @@ module Data.Revision
     (Change(..), Version(..), View(..), ViewRef(..),
      makeInitialVersion,
      makeView, makeVersion, makeVersionOnView,
-     moveView, makeChange, viewRefVersion)
+     moveView, makeChange, viewRefVersionIRef, viewRefVersion)
 where
 
 import Prelude hiding (lookup)
@@ -60,13 +60,15 @@ data ViewRef d = ViewRef { viewRefStore :: d,
                            viewIRef :: IRef View }
   deriving (Eq, Ord)
 
+viewRefVersionIRef :: Store d => ViewRef d -> IO (IRef Version)
+viewRefVersionIRef viewRef =
+  fmap viewVersion .
+  Store.getIRef (viewRefStore viewRef) .
+  viewIRef $ viewRef
+
 viewRefVersion :: Store d => ViewRef d -> IO Version
-viewRefVersion viewRef = do
-  let viewStoreRef = Store.fromIRef store . viewIRef $ viewRef
-  View versionIRef <- Store.get viewStoreRef
-  Store.getIRef store versionIRef
-  where
-    store = viewRefStore viewRef
+viewRefVersion viewRef =
+  Store.getIRef (viewRefStore viewRef) =<< viewRefVersionIRef viewRef
 
 viewKey :: ViewRef d -> ObjectKey -> ByteString
 viewKey = xorBS . Guid.bs . IRef.guid . viewIRef
@@ -170,9 +172,9 @@ walkDown store onVersion topRef bottomRef =
 moveView :: Store d => ViewRef d -> IRef Version -> IO ()
 moveView viewRef versionIRef = do
   let viewStoreRef = Store.fromIRef store . viewIRef $ viewRef
-  View viewVersionRef <- Store.get viewStoreRef
-  mraRef <- mostRecentAncestor store viewVersionRef versionIRef
-  walkUp store applyBackward mraRef viewVersionRef
+  View viewVersionIRef <- Store.get viewStoreRef
+  mraRef <- mostRecentAncestor store viewVersionIRef versionIRef
+  walkUp store applyBackward mraRef viewVersionIRef
   walkDown store applyForward mraRef versionIRef
   Store.set viewStoreRef $ View versionIRef
   where

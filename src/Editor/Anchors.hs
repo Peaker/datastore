@@ -1,7 +1,7 @@
 module Editor.Anchors(
     clipboardIRef, rootIRef,
-    focalPointIRef, branches,
-    branchSelector, mainGrid)
+    focalPointIRef, views,
+    viewSelector, mainGrid)
 where
 
 import Data.Binary(Binary)
@@ -28,11 +28,11 @@ focalPointIRef :: Store d => d -> Store.Ref d ITreeD
 focalPointIRef = makeAnchor "viewroot"
 
 -- Db key
-branches :: Store d => d -> Store.Ref d [(IRef TextEdit.Model, IRef Revision.View)]
-branches = makeAnchor "branches"
+views :: Store d => d -> Store.Ref d [(IRef TextEdit.Model, IRef Revision.View)]
+views = makeAnchor "views"
 
-branchSelector :: Store d => d -> Store.Ref d Grid.Model
-branchSelector = makeAnchor "branchSelector"
+viewSelector :: Store d => d -> Store.Ref d Grid.Model
+viewSelector = makeAnchor "viewSelector"
 
 mainGrid :: Store d => d -> Store.Ref d Grid.Model
 mainGrid = makeAnchor "GUI.mainGrid"

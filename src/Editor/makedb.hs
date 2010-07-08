@@ -22,10 +22,10 @@ main =
   Db.withDb "/tmp/db.db" $ \dbStore -> do
     masterRef <- makeViewRef dbStore
 
-    branchNameIRef <- Store.newIRef dbStore $ TextEdit.initModel "master"
-    Store.set (Anchors.branches dbStore) $
-      [(branchNameIRef, Revision.viewIRef masterRef)]
-    Store.set (Anchors.branchSelector dbStore) Grid.initModel
+    viewNameIRef <- Store.newIRef dbStore $ TextEdit.initModel "master"
+    Store.set (Anchors.views dbStore) $
+      [(viewNameIRef, Revision.viewIRef masterRef)]
+    Store.set (Anchors.viewSelector dbStore) Grid.initModel
     Store.set (Anchors.mainGrid dbStore) Grid.initModel
     Transaction.withTransaction masterRef $ \store -> do
       childrenRefs <- mapM (Data.makeLeafRef store . show) [1..10 :: Int]

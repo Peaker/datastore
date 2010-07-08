@@ -26,5 +26,5 @@ writeTreeXml store outFile depth iref = do
 main :: IO ()
 main =
   Db.withDb "/tmp/db.db" $ \dbStore -> do
-    viewRef <- (Revision.ViewRef dbStore . snd . head) `fmap` Store.get (Anchors.branches dbStore)
+    viewRef <- (Revision.ViewRef dbStore . snd . head) `fmap` Store.get (Anchors.views dbStore)
     writeTreeXml viewRef stdout 0 =<< Store.get (Anchors.rootIRef viewRef)
