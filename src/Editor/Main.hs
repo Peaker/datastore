@@ -30,13 +30,10 @@ import qualified Graphics.UI.VtyWidgets.SizeRange as SizeRange
 import Graphics.UI.VtyWidgets.Widget(Widget)
 import qualified Graphics.UI.VtyWidgets.Run as Run
 import qualified Db
-import Editor.Data(ITreeD, TreeD, Tree, Data)
+import Editor.Data(ITreeD, TreeD)
 import qualified Editor.Data as Data
 import qualified Editor.Anchors as Anchors
 import qualified Editor.Config as Config
-
-setFocalPoint :: Store d => d -> IRef (Tree Data) -> IO ()
-setFocalPoint store = Store.set (Store.anchorRef store "viewroot")
 
 indent :: Int -> Display a -> Display a
 indent width disp = Grid.makeView [[Spacer.make (SizeRange.fixedSize (Vector2 width 0)), disp]]
@@ -125,7 +122,7 @@ makeTreeEdit view clipboardRef treeIRef = do
                         fmap (Keymap.simpleton "Del node" Config.delChildKey . delChild)
         setRootKeymap =
           Keymap.simpleton "Set focal point" Config.setFocalPointKey $
-            setFocalPoint view treeIRef
+            Store.set (Anchors.focalPointIRef view) treeIRef
         appendNewChild = do
           -- TODO: Transaction here
           newRef <- Data.makeLeafRef view "NEW_NODE"
@@ -214,7 +211,7 @@ makeEditWidget view clipboardRef = do
     focalPointIRefRef = Anchors.focalPointIRef view
     rootIRefRef = Anchors.rootIRef view
     goRootKeymap rootIRef focalPointIRef =
-      if focalPointIRef == rootIRef
+      if rootIRef == focalPointIRef
       then mempty
       else Keymap.simpleton "Go to root" Config.rootKey .
            Store.set focalPointIRefRef $
