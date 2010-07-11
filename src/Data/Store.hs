@@ -14,7 +14,6 @@ where
 import Prelude hiding (lookup)
 import Data.IRef(IRef)
 import qualified Data.IRef as IRef
-import Data.Maybe(fromJust)
 import Data.Binary(Binary)
 import Data.Binary.Utils(encodeS, decodeS)
 import Data.Record.Label((:->))
@@ -33,7 +32,9 @@ lookup :: (Store d, Binary a) => d -> Guid -> IO (Maybe a)
 lookup store = (fmap . fmap) decodeS . lookupBS store . Guid.bs
 
 readStoreIRef :: (Store d, Binary a) => d -> IRef a -> IO a
-readStoreIRef store = fmap fromJust . lookup store . IRef.guid
+readStoreIRef store iref =
+  maybe (fail $ "IRef " ++ show iref ++ " to inexistent object dereferenced") return =<<
+  (lookup store . IRef.guid) iref
 
 insertBS :: Store d => d -> ByteString -> ByteString -> IO ()
 insertBS store key value = storeChanges store [(key, Just value)]
