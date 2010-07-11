@@ -73,8 +73,14 @@ makeTreeEdit view clipboardRef treeIRef = do
   valueRef <- Store.follow $ Data.nodeValueRef `composeLabel` treeRef
   makeTreeEdit'
     (second `composeLabel` valueRef)
-    (second . first `composeLabel` valueRef)
-    (first . first `composeLabel` valueRef)
+    -- HLint/haskell-src-exts doesn't know the fixity of composeLabel,
+    -- so it's fixity resolver fails to parse the following without ()
+    -- around the . expression. When it fails here, it avoids
+    -- resolving all fixities, so it makes it complain about the above
+    -- "Store.follow $ ..." expression that $ is redundant because it
+    -- thinks the fixity of composeLabel is lower than $.
+    ((second . first) `composeLabel` valueRef)
+    ((first . first) `composeLabel` valueRef)
     (Data.nodeChildrenRefs `composeLabel` treeRef)
   where
     treeRef = Store.fromIRef view treeIRef
@@ -90,8 +96,8 @@ makeTreeEdit view clipboardRef treeIRef = do
         childItems <- mapM (makeTreeEdit view clipboardRef) =<< Store.get childrenIRefsRef
         curChildIndex <- getChildIndex . length $ childItems
         childGrid <- makeGrid (map (: []) childItems) childrenGridModelRef
-        let childGrid' = (Widget.strongerKeys $
-                          mappend
+        let childGrid' = Widget.strongerKeys
+                         (mappend
                           delNodeKeymap cutNodeKeymap
                           curChildIndex) .
                          Widget.atDisplay (indent 5) $

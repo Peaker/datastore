@@ -27,7 +27,7 @@ main =
 
     -- Db-level anchors
     Store.set (Anchors.branches dbStore) [(masterNameIRef, master)]
-    Store.set (Anchors.versionMap dbStore) $ versionMap
+    Store.set (Anchors.versionMap dbStore) versionMap
     Store.set (Anchors.branchSelector dbStore) Grid.initModel
     Store.set (Anchors.mainGrid dbStore) Grid.initModel
 
