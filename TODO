@@ -1,15 +1,47 @@
-* Version should also be an IRef wrapper around VersionData, like View
-  and Branch?
+* Transactions:
+
+  * A Monad for DB access, the monadic-ness is important for allowing
+    lookups and subsequent modifications based on lookup results.  The
+    monadic computation need not be associated with a particular
+    store.
+
+    Sadly, this requires GHC extensions...
+
+  * class Store d where
+      type Transaction d :: * -> * -- Transaction monad to perform store operations in
+      lookup :: Monad (Transaction d) => 
+
+    * lookup :: Store.Transaction (Maybe a)
+    * set :: ByteString -> ByteString -> Store.Transaction () 
+
+  * instance Store Db where
+      type Transaction Db = IO
+
+  * instance Store View where
+ -- a transformer around IO that keeps a write-log and can commit
+    eventually:
+      type Transaction Db = ViewTransaction
+
+  * Maybe need something like: LabelRef a b = LabelRef (IRef a) (a <-> b),
+    that can be used with any store, instead of Store.Ref?
+
+      * 4 components: Transaction, Store, Ref, FCLabel -- I want a
+        type that represents the last 3, but not the first
+
+      * Maybe Transaction should not be a Store? Maybe like Berkeley,
+        better to have a transaction argument?
+
+  * Currently I might update a branch ptr, and crash before the
+    version map cache was updated:
+
+    * Wrap view movements/etc with lower-layer transactions
+
+    * Use Berkeley transactions to implement storeChanges
 
 * Anchors to return IRef and not Ref?
 
-* Editor currently needs a transaction for append child:
-
-  * For Transactions, I somehow need to be able to re-use a Ref for
-    "d" as a Ref for "Transaction d"
-
-    * Maybe need something like: FRef a b = FRef (IRef a) (a <-> b),
-      that can be used with any store, instead of Store.Ref?
+* Version should also be an IRef wrapper around VersionData, like View
+  and Branch?
 
 * Have a reflog too
   * Implicit name for all Undo edges (carry around the "current undo
@@ -19,30 +51,32 @@
 * Add fromIRefDefault that replaces fromJust with fromMaybe -- remove
   lots of code from makeDb and just add defaults to Anchors
 
-* Crash resilience:
-  * Currently I might update a branch ptr, and crash before the view
-    was updated:
-    * Wrap view movements/etc with lower-layer transactions
-    * Use Berkeley transactions to implement storeChanges
+* Pure immutable key/value store (add only) interface?
 
-* Immutable key/value store (add only) interface?
+  * IRef contains a safe hash or a copy of the value, depending on
+      which is smaller
 
-  * Can be pure if guaranteed exclusiveness
+  * addNew :: Value -> IRef Value
+    deref :: IRef Value -> Value
 
-    * IRef contains a safe hash
+  * Values have to contain IRefs to other values rather than direct
+    refs in order to serialize properly, but otherwise they are used
+    like pure values.
 
-    * addNew :: Value -> IRef Value
+  * Circularity achieved via higher-level reference encoding
 
-      * Doesn't allow circular data-structures, do I need them?
+  * Revision control (Data.Rev.Change and Data.Rev.VersionMap) can use
+    pure IRefs for object values
 
-    * read :: IRef Value -> Value
+--- XML UI ----------------------------------
 
-    * Revision uses pure interface for main store but mutable store
-      for the View cache and branches
+* Attributes, text leaf GUI widgets
 
 * Collapsing, max-depth under which you jump to a new root
 
-----------------------------------------
+* 
+
+--- Code editor -----------------------------
 
 * Interpret Tree as Code!
   * Scheme / Untyped Haskell

@@ -25,8 +25,8 @@ Executable Editor
                        Data.Record.Label.Tuple,
                        Data.Guid,
                        Data.IRef,
+                       Data.IRef.Tree,
                        Data.Store,
-                       Data.Store.Tree,
                        Data.Rev.Change,
                        Data.Rev.Version,
                        Data.Rev.Branch,
@@ -57,8 +57,8 @@ Executable makedb
                        Data.Rev.View,
                        Data.Transaction,
                        Data.IRef,
+                       Data.IRef.Tree,
                        Data.Store,
-                       Data.Store.Tree,
                        Editor.Data,
                        Editor.Anchors
   ghc-options:         -O2 -Wall
@@ -80,8 +80,8 @@ Executable toxml
                        Data.Rev.View,
                        Data.Transaction,
                        Data.IRef,
+                       Data.IRef.Tree,
                        Data.Store,
-                       Data.Store.Tree,
                        Db,
                        Editor.Data,
                        Editor.Anchors

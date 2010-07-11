@@ -1,6 +1,6 @@
 {-# LANGUAGE TypeOperators, TemplateHaskell #-}
 
-module Data.Store.Tree
+module Data.IRef.Tree
     (Tree(..), nodeValueRef, nodeChildrenRefs)
 where
 

@@ -10,7 +10,7 @@ import Data.Store(Store)
 import qualified Data.Store as Store
 import qualified Graphics.UI.VtyWidgets.Grid as Grid
 import qualified Graphics.UI.VtyWidgets.TextEdit as TextEdit
-import Data.Store.Tree(Tree(..), nodeValueRef, nodeChildrenRefs)
+import Data.IRef.Tree(Tree(..), nodeValueRef, nodeChildrenRefs)
 
 type Data = ((Grid.Model, Grid.Model), TextEdit.Model)
 type ITreeD = ITree Data
