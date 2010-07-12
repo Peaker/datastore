@@ -9,16 +9,18 @@ where
 -- | redundant to the lists of changes stored in the version graph.
 
 import Prelude hiding (lookup)
-import Control.Monad((<=<))
+import Control.Monad.IO.Class(MonadIO)
+import Control.Monad(liftM, (<=<))
 import qualified Data.Record.Label as Label
 import Data.ByteString(ByteString)
 import Data.ByteString.Utils(xorBS)
 import Data.Binary(Binary)
-import Data.Store(Store)
+import qualified Data.Property as Property
 import Data.IRef(IRef)
 import qualified Data.IRef as IRef
+import qualified Data.Transaction as Transaction
+import Data.Transaction(Transaction)
 import qualified Data.Guid as Guid
-import qualified Data.Store as Store
 import Data.Rev.Change(Change)
 import qualified Data.Rev.Change as Change
 import Data.Rev.Version(Version(Version))
@@ -36,37 +38,37 @@ newtype VersionMap = VersionMap {
 makeKey :: VersionMap -> Change.Key -> ByteString
 makeKey = xorBS . Guid.bs . IRef.guid . vmKey
 
-lookup :: Store d => d -> VersionMap -> Change.Key -> IO (Maybe Change.Value)
-lookup store vm = Store.lookupBS store . makeKey vm
+lookup :: Monad m => VersionMap -> Change.Key -> Transaction m (Maybe Change.Value)
+lookup vm = Transaction.lookupBS . makeKey vm
 
-applyChanges :: Store d => d -> VersionMap -> Change.Dir -> [Change] -> IO ()
-applyChanges store vm changeDir = mapM_ applyChange
+applyChanges :: Monad m => VersionMap -> Change.Dir -> [Change] -> Transaction m ()
+applyChanges vm changeDir = mapM_ applyChange
   where
     applyChange change = setValue
                          (makeKey vm $ Label.get Change.objectKey change)
                          (Label.get changeDir change)
-    setValue key Nothing      = Store.deleteBS store key
-    setValue key (Just value) = Store.insertBS store key value
+    setValue key Nothing      = Transaction.deleteBS key
+    setValue key (Just value) = Transaction.insertBS key value
 
-move :: Store d => d -> VersionMap -> IRef Version -> IO ()
-move store vm destVersionIRef = do
-  let vmDataRef = Store.fromIRef store . vmKey $ vm
-  VersionMapData srcVersionIRef <- Store.get vmDataRef
-  mraIRef <- Version.mostRecentAncestor store srcVersionIRef destVersionIRef
-  Version.walkUp store applyBackward mraIRef srcVersionIRef
-  Version.walkDown store applyForward mraIRef destVersionIRef
-  Store.set vmDataRef $ VersionMapData destVersionIRef
+move :: Monad m => VersionMap -> IRef Version -> Transaction m ()
+move vm destVersionIRef = do
+  let vmDataRef = Transaction.fromIRef . vmKey $ vm
+  VersionMapData srcVersionIRef <- Property.get vmDataRef
+  mraIRef <- Version.mostRecentAncestor srcVersionIRef destVersionIRef
+  Version.walkUp applyBackward mraIRef srcVersionIRef
+  Version.walkDown applyForward mraIRef destVersionIRef
+  Property.set vmDataRef $ VersionMapData destVersionIRef
   where
     applyForward = apply Change.newValue
     applyBackward = apply Change.oldValue
-    apply changeDir version = applyChanges store vm changeDir . Version.changes $ version
+    apply changeDir version = applyChanges vm changeDir . Version.changes $ version
 
-new :: Store d => d -> IRef Version -> IO VersionMap
-new store versionIRef = do
-  vm <- VersionMap `fmap` Store.newIRef store (VersionMapData versionIRef)
-  applyHistory vm =<< Store.getIRef store versionIRef
+new :: MonadIO m => IRef Version -> Transaction m VersionMap
+new versionIRef = do
+  vm <- VersionMap `liftM` Transaction.newIRef (VersionMapData versionIRef)
+  applyHistory vm =<< Transaction.readIRef versionIRef
   return vm
   where
     applyHistory vm (Version _ mbParentIRef changes) = do
-      maybe (return ()) (applyHistory vm <=< Store.getIRef store) mbParentIRef
-      applyChanges store vm Change.newValue changes
+      maybe (return ()) (applyHistory vm <=< Transaction.readIRef) mbParentIRef
+      applyChanges vm Change.newValue changes

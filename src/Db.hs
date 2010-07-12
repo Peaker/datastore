@@ -2,7 +2,7 @@
 
 module Db
     (Db, withDb,
-     withCursor, nextKeyBS, nextKey)
+     withCursor, nextKeyBS, nextKey, lookup, transaction, store)
 where
 
 import Data.Binary.Utils(decodeS)
@@ -10,14 +10,14 @@ import Control.Arrow(second)
 import Control.Exception(bracket)
 import Prelude hiding (lookup)
 import qualified Database.Berkeley.Db as Berkeley
-import Data.Store(Store(..))
 import Data.ByteString(ByteString)
 import Data.Binary(Binary)
+import Data.Transaction(Store(..))
 import System.Directory(createDirectoryIfMissing)
 
 data Db = Db {
   dbBerkeley :: Berkeley.Db,
-  _dbEnv :: Berkeley.DbEnv
+  dbEnv :: Berkeley.DbEnv
   }
 
 type Cursor = Berkeley.DbCursor
@@ -29,9 +29,12 @@ open :: FilePath -> IO Db
 open fileName = do
   createDirectoryIfMissing False envDir
   env <- Berkeley.dbEnv_create []
-  Berkeley.dbEnv_open [Berkeley.DB_CREATE, Berkeley.DB_INIT_MPOOL] 0 env envDir
+  Berkeley.dbEnv_open [Berkeley.DB_CREATE, Berkeley.DB_INIT_MPOOL,
+                       Berkeley.DB_INIT_TXN, Berkeley.DB_INIT_LOCK,
+                       Berkeley.DB_INIT_LOG] 0 env envDir
   db <- Berkeley.db_create [] env
-  Berkeley.db_open [Berkeley.DB_CREATE] Berkeley.DB_BTREE 0 db Nothing fileName (Just "DB title")
+  Berkeley.dbEnv_withTxn [] [] env Nothing $ \txn ->
+    Berkeley.db_open [Berkeley.DB_CREATE] Berkeley.DB_BTREE 0 db (Just txn) fileName (Just "DB title")
   return $ Db db env
 
 close :: Db -> IO ()
@@ -52,10 +55,18 @@ nextKey cursor = (fmap . fmap . second) decodeS (nextKeyBS cursor)
 withDb :: FilePath -> (Db -> IO a) -> IO a
 withDb filePath = bracket (open filePath) close
 
-applyChange :: Db -> ByteString -> Maybe ByteString -> IO ()
-applyChange db key Nothing = Berkeley.db_del [] (dbBerkeley db) Nothing key
-applyChange db key (Just value) = Berkeley.db_put [] (dbBerkeley db) Nothing key value
+lookup :: Db -> ByteString -> IO (Maybe ByteString)
+lookup db = Berkeley.db_get [] (dbBerkeley db) Nothing
 
-instance Store Db where
-  lookupBS db = Berkeley.db_get [] (dbBerkeley db) Nothing
-  storeChanges = mapM_ . uncurry . applyChange
+transaction :: Db -> [(ByteString, Maybe ByteString)] -> IO ()
+transaction db changes = Berkeley.dbEnv_withTxn [] [] (dbEnv db) Nothing $ \txn ->
+  mapM_ (uncurry (applyChange txn)) changes
+  where
+    applyChange txn key Nothing = Berkeley.db_del [] (dbBerkeley db) (Just txn) key
+    applyChange txn key (Just value) = Berkeley.db_put [] (dbBerkeley db) (Just txn) key value
+
+store :: Db -> Store IO
+store db = Store {
+  storeLookup = lookup db,
+  storeTransaction = transaction db
+  }

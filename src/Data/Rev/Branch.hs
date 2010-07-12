@@ -4,8 +4,10 @@ module Data.Rev.Branch
     (Branch, new, move, curVersionIRef, newVersion)
 where
 
-import qualified Data.Store as Store
-import Data.Store(Store)
+import Control.Monad(liftM)
+import Control.Monad.IO.Class(MonadIO)
+import qualified Data.Transaction as Transaction
+import Data.Transaction(Transaction)
 import Data.Binary(Binary)
 import Data.IRef(IRef)
 import Data.Rev.Change(Change)
@@ -21,16 +23,17 @@ newtype BranchData = BranchData {
 newtype Branch = Branch (IRef BranchData)
   deriving (Eq, Ord, Read, Show, Binary)
 
-new :: Store d => d -> IRef Version -> IO Branch
-new store versionIRef = Branch `fmap` Store.newIRef store (BranchData versionIRef)
+new :: MonadIO m => IRef Version -> Transaction m Branch
+new versionIRef = Branch `liftM`
+                  Transaction.newIRef (BranchData versionIRef)
 
-move :: Store d => d -> Branch -> IRef Version -> IO ()
-move store (Branch dataIRef) dest = Store.setIRef store dataIRef (BranchData dest)
+move :: Monad m => Branch -> IRef Version -> Transaction m ()
+move (Branch dataIRef) dest = Transaction.writeIRef dataIRef (BranchData dest)
 
-curVersionIRef :: Store d => d -> Branch -> IO (IRef Version)
-curVersionIRef store (Branch dataIRef) = brVersionIRef `fmap` Store.getIRef store dataIRef
+curVersionIRef :: Monad m => Branch -> Transaction m (IRef Version)
+curVersionIRef (Branch dataIRef) = brVersionIRef `liftM` Transaction.readIRef dataIRef
 
-newVersion :: Store d => d -> Branch -> [Change] -> IO ()
-newVersion store branch changes = do
-  versionIRef <- curVersionIRef store branch
-  move store branch =<< Version.newVersion store versionIRef changes
+newVersion :: MonadIO m => Branch -> [Change] -> Transaction m ()
+newVersion branch changes = do
+  versionIRef <- curVersionIRef branch
+  move branch =<< Version.newVersion versionIRef changes

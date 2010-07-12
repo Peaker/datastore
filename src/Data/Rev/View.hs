@@ -1,12 +1,14 @@
 {-# OPTIONS -O2 -Wall #-}
 module Data.Rev.View
-    (View(..), make, curVersionIRef, curVersion, move)
+    (View(..), make, curVersionIRef, curVersion, move, store)
 where
 
 import Prelude hiding (lookup)
-import qualified Data.Store as Store
+import Control.Monad(liftM)
+import Control.Monad.IO.Class(MonadIO)
 import Data.IRef(IRef)
-import Data.Store(Store)
+import Data.Transaction(Transaction, Store(..))
+import qualified Data.Transaction as Transaction
 import Data.Rev.Version(Version)
 import Data.Rev.VersionMap(VersionMap)
 import qualified Data.Rev.VersionMap as VersionMap
@@ -15,37 +17,47 @@ import qualified Data.Rev.Branch as Branch
 import Data.Rev.Change(Change)
 import qualified Data.Rev.Change as Change
 
-data View d = View { store :: d,
-                     cache :: VersionMap,
-                     branch :: Branch }
+data View = View { cache :: VersionMap,
+                   branch :: Branch }
 
-make :: Store d => d -> VersionMap -> Branch -> View d
+make :: VersionMap -> Branch -> View
 make = View
 
-curVersionIRef :: Store d => View d -> IO (IRef Version)
-curVersionIRef view = Branch.curVersionIRef (store view) (branch view)
+curVersionIRef :: Monad m => View -> Transaction m (IRef Version)
+curVersionIRef view = Branch.curVersionIRef (branch view)
 
-curVersion :: Store d => View d -> IO Version
-curVersion view = Store.getIRef (store view) =<< curVersionIRef view
+curVersion :: Monad m => View -> Transaction m Version
+curVersion view = Transaction.readIRef =<< curVersionIRef view
 
-move :: Store d => View d -> IRef Version -> IO ()
-move view = Branch.move (store view) (branch view)
+move :: MonadIO m => View -> IRef Version -> Transaction m ()
+move = Branch.move . branch
 
-newVersion :: Store d => View d -> [Change] -> IO ()
-newVersion view = Branch.newVersion (store view) (branch view)
+newVersion :: MonadIO m => View -> [Change] -> Transaction m ()
+newVersion view = Branch.newVersion (branch view)
 
-sync :: Store d => View d -> IO ()
-sync view = VersionMap.move (store view) (cache view) =<< Branch.curVersionIRef (store view) (branch view)
+sync :: Monad m => View -> Transaction m ()
+sync view = VersionMap.move (cache view) =<< Branch.curVersionIRef (branch view)
 
 -- unsafe because it assumes you sync'd:
-unsafeLookupBS :: Store d => View d -> Change.Key -> IO (Maybe Change.Value)
-unsafeLookupBS view = VersionMap.lookup (store view) (cache view)
+unsafeLookupBS :: Monad m => View -> Change.Key -> Transaction m (Maybe Change.Value)
+unsafeLookupBS view = VersionMap.lookup (cache view)
 
-instance Store d => Store (View d) where
-  lookupBS view objKey = sync view >> unsafeLookupBS view objKey
-  storeChanges view changes = do
-    sync view
-    newVersion view =<< (mapM $ uncurry viewMakeChange) changes
-    where
-      viewMakeChange key value =
-        flip (Change.make key) value `fmap` unsafeLookupBS view key
+lookup :: Monad m => View -> Change.Key -> Transaction m (Maybe Change.Value)
+lookup view objKey = do
+  sync view
+  unsafeLookupBS view objKey
+
+transaction :: MonadIO m => View -> [(Change.Key, Maybe Change.Value)] -> Transaction m ()
+transaction _    [] = return ()
+transaction view changes = do
+  sync view
+  newVersion view =<< (mapM $ uncurry viewMakeChange) changes
+  where
+    viewMakeChange key value =
+      flip (Change.make key) value `liftM` unsafeLookupBS view key
+
+store :: MonadIO m => View -> Store (Transaction m)
+store view = Store {
+  storeLookup = lookup view,
+  storeTransaction = transaction view
+  }

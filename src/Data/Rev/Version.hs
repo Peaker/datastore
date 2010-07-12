@@ -5,11 +5,12 @@ module Data.Rev.Version
      walkUp, walkDown, versionsBetween)
 where
 
-import Control.Monad(liftM3)
+import Control.Monad(liftM, liftM3)
+import Control.Monad.IO.Class(MonadIO)
 import Data.Binary(Binary(..))
 import Data.IRef(IRef)
-import qualified Data.Store as Store
-import Data.Store(Store)
+import Data.Transaction(Transaction)
+import qualified Data.Transaction as Transaction
 import Data.Rev.Change(Change)
 
 data Version = Version {
@@ -22,22 +23,22 @@ instance Binary Version where
   get = liftM3 Version get get get
   put (Version d p c) = put d >> put p >> put c
 
-makeInitialVersion :: Store d => d -> IO (IRef Version)
-makeInitialVersion store = Store.newIRef store $ Version 0 Nothing []
+makeInitialVersion :: MonadIO m => Transaction m (IRef Version)
+makeInitialVersion = Transaction.newIRef $ Version 0 Nothing []
 
-newVersion :: Store d => d -> IRef Version -> [Change] -> IO (IRef Version)
-newVersion store versionIRef newChanges = do
-  parentDepth <- depth `fmap` Store.getIRef store versionIRef
-  Store.newIRef store (Version (parentDepth+1) (Just versionIRef) newChanges)
+newVersion :: MonadIO m => IRef Version -> [Change] -> Transaction m (IRef Version)
+newVersion versionIRef newChanges = do
+  parentDepth <- depth `liftM` Transaction.readIRef versionIRef
+  Transaction.newIRef $ Version (parentDepth+1) (Just versionIRef) newChanges
 
-mostRecentAncestor :: Store d => d -> IRef Version -> IRef Version -> IO (IRef Version)
-mostRecentAncestor store = mra
+mostRecentAncestor :: Monad m => IRef Version -> IRef Version -> Transaction m (IRef Version)
+mostRecentAncestor = mra
   where
     mra aIRef bIRef
       | aIRef == bIRef  = return aIRef
       | otherwise       = do
-        a <- Store.getIRef store aIRef
-        b <- Store.getIRef store bIRef
+        a <- Transaction.readIRef aIRef
+        b <- Transaction.readIRef bIRef
         climb aIRef a bIRef b
     climb
       aIRef (Version aDepth aMbParentRef _aChanges)
@@ -52,29 +53,29 @@ mostRecentAncestor store = mra
         mra aParentRef bParentRef
     nonZeroDepth = maybe (fail "Non-0 depth must have a parent") return
 
-walkUp :: Store d => d -> (Version -> IO ()) -> IRef Version -> IRef Version -> IO ()
-walkUp store onVersion topRef bottomRef
+walkUp :: Monad m => (Version -> Transaction m ()) -> IRef Version -> IRef Version -> Transaction m ()
+walkUp onVersion topRef bottomRef
   | bottomRef == topRef  = return ()
   | otherwise            = do
-    version <- Store.getIRef store bottomRef
+    version <- Transaction.readIRef bottomRef
     onVersion version
-    maybe (fail "Invalid path given, hit top") (walkUp store onVersion topRef) $
+    maybe (fail "Invalid path given, hit top") (walkUp onVersion topRef) $
       parent version
 
 -- We can't directly walkDown (we don't have references pointing
 -- downwards... But we can generate a list of versions by walking up
 -- and accumulating a reverse list)
-versionsBetween :: Store d => d -> IRef Version -> IRef Version -> IO [Version]
-versionsBetween store topRef bottomRef = accumulateWalkUp [] bottomRef
+versionsBetween :: Monad m => IRef Version -> IRef Version -> Transaction m [Version]
+versionsBetween topRef bottomRef = accumulateWalkUp [] bottomRef
   where
     accumulateWalkUp vs curRef
       | topRef == curRef  = return vs
       | otherwise         = do
-        version <- Store.getIRef store curRef
+        version <- Transaction.readIRef curRef
         maybe (fail "Invalid path given, hit top") (accumulateWalkUp (version:vs)) $
           parent version
 
 -- Implement in terms of versionsBetween
-walkDown :: Store d => d -> (Version -> IO ()) -> IRef Version -> IRef Version -> IO ()
-walkDown store onVersion topRef bottomRef =
-  mapM_ onVersion =<< versionsBetween store topRef bottomRef
+walkDown :: Monad m => (Version -> Transaction m ()) -> IRef Version -> IRef Version -> Transaction m ()
+walkDown onVersion topRef bottomRef =
+  mapM_ onVersion =<< versionsBetween topRef bottomRef

@@ -4,39 +4,34 @@ module Editor.Anchors(
     branchSelector, versionMap, mainGrid)
 where
 
-import Data.Binary(Binary)
 import Data.IRef(IRef)
-import Data.Store(Store)
-import qualified Data.Store as Store
+import qualified Data.Transaction as Transaction
 import Data.Rev.Branch(Branch)
 import Data.Rev.VersionMap(VersionMap)
 import Editor.Data(ITreeD)
 import qualified Graphics.UI.VtyWidgets.Grid as Grid
 import qualified Graphics.UI.VtyWidgets.TextEdit as TextEdit
 
-makeAnchor :: (Store d, Binary a) => String -> d -> Store.Ref d a
-makeAnchor = flip Store.anchorRef
-
-clipboardIRef :: Store d => d -> Store.Ref d (IRef [ITreeD])
-clipboardIRef = makeAnchor "clipboard"
+clipboardIRef :: Monad m => Transaction.Property m (IRef [ITreeD])
+clipboardIRef = Transaction.anchorRef "clipboard"
 
 -- Revision-store key
-rootIRef :: Store d => d -> Store.Ref d ITreeD
-rootIRef = makeAnchor "root"
+rootIRef :: Monad m => Transaction.Property m ITreeD
+rootIRef = Transaction.anchorRef "root"
 
 -- Revision-store key
-focalPointIRef :: Store d => d -> Store.Ref d ITreeD
-focalPointIRef = makeAnchor "focalPoint"
+focalPointIRef :: Monad m => Transaction.Property m ITreeD
+focalPointIRef = Transaction.anchorRef "focalPoint"
 
 -- Db key
-branches :: Store d => d -> Store.Ref d [(IRef TextEdit.Model, Branch)]
-branches = makeAnchor "branches"
+branches :: Monad m => Transaction.Property m [(IRef TextEdit.Model, Branch)]
+branches = Transaction.anchorRef "branches"
 
-branchSelector :: Store d => d -> Store.Ref d Grid.Model
-branchSelector = makeAnchor "branchSelector"
+branchSelector :: Monad m => Transaction.Property m Grid.Model
+branchSelector = Transaction.anchorRef "branchSelector"
 
-versionMap :: Store d => d -> Store.Ref d VersionMap
-versionMap = makeAnchor "HEAD"
+versionMap :: Monad m => Transaction.Property m VersionMap
+versionMap = Transaction.anchorRef "HEAD"
 
-mainGrid :: Store d => d -> Store.Ref d Grid.Model
-mainGrid = makeAnchor "GUI.mainGrid"
+mainGrid :: Monad m => Transaction.Property m Grid.Model
+mainGrid = Transaction.anchorRef "GUI.mainGrid"

@@ -2,12 +2,12 @@
 
 module Main (main) where
 
-import qualified Data.Store as Store
 import qualified Data.Rev.Version as Version
 import qualified Data.Rev.VersionMap as VersionMap
 import qualified Data.Rev.View as View
 import qualified Data.Rev.Branch as Branch
 import qualified Data.Transaction as Transaction
+import qualified Data.Property as Property
 import qualified Db
 import qualified Editor.Data as Data
 import qualified Editor.Anchors as Anchors
@@ -16,25 +16,24 @@ import qualified Graphics.UI.VtyWidgets.TextEdit as TextEdit
 
 main :: IO ()
 main =
-  Db.withDb "/tmp/db.db" $ \dbStore -> do
-    initialVersionIRef <- Version.makeInitialVersion dbStore
+  Db.withDb "/tmp/db.db" $ \db -> Transaction.run (Db.store db) $ do
+    initialVersionIRef <- Version.makeInitialVersion
 
-    masterNameIRef <- Store.newIRef dbStore $ TextEdit.initModel "master"
-    master <- Branch.new dbStore initialVersionIRef
+    masterNameIRef <- Transaction.newIRef $ TextEdit.initModel "master"
+    master <- Branch.new initialVersionIRef
 
-    versionMap <- VersionMap.new dbStore initialVersionIRef
-    let view = View.make dbStore versionMap master
+    versionMap <- VersionMap.new initialVersionIRef
+    let view = View.make versionMap master
 
     -- Db-level anchors
-    Store.set (Anchors.branches dbStore) [(masterNameIRef, master)]
-    Store.set (Anchors.versionMap dbStore) versionMap
-    Store.set (Anchors.branchSelector dbStore) Grid.initModel
-    Store.set (Anchors.mainGrid dbStore) Grid.initModel
+    Property.set Anchors.branches [(masterNameIRef, master)]
+    Property.set Anchors.versionMap versionMap
+    Property.set Anchors.branchSelector Grid.initModel
+    Property.set Anchors.mainGrid Grid.initModel
 
-    Transaction.withTransaction view $ \store -> do
-      childrenRefs <- mapM (Data.makeLeafRef store . show) [1..10 :: Int]
-      rootIRef <- Data.makeNodeRef store "tree root value" childrenRefs
-      Store.set (Anchors.rootIRef store) rootIRef
-      Store.set (Anchors.focalPointIRef store) rootIRef
-      Store.set (Anchors.clipboardIRef store) =<< Store.newIRef store []
-
+    Transaction.run (View.store view) $ do
+      childrenRefs <- mapM (Data.makeLeafRef . show) [1..10 :: Int]
+      rootIRef <- Data.makeNodeRef "tree root value" childrenRefs
+      Property.set Anchors.rootIRef rootIRef
+      Property.set Anchors.focalPointIRef rootIRef
+      Property.set Anchors.clipboardIRef =<< Transaction.newIRef []

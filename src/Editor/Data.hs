@@ -5,9 +5,10 @@ module Editor.Data(
     makeValueRef, makeNodeRef, makeLeafRef)
 where
 
+import Control.Monad.IO.Class(MonadIO)
 import Data.IRef(IRef)
-import Data.Store(Store)
-import qualified Data.Store as Store
+import Data.Transaction(Transaction)
+import qualified Data.Transaction as Transaction
 import qualified Graphics.UI.VtyWidgets.Grid as Grid
 import qualified Graphics.UI.VtyWidgets.TextEdit as TextEdit
 import Data.IRef.Tree(Tree(..), nodeValueRef, nodeChildrenRefs)
@@ -18,13 +19,13 @@ type TreeD = Tree Data
 
 type ITree a = IRef (Tree a)
 
-makeValueRef :: Store d => d -> String -> IO (IRef Data)
-makeValueRef store text = Store.newIRef store ((Grid.initModel, Grid.initModel), TextEdit.initModel text)
+makeValueRef :: MonadIO m => String -> Transaction m (IRef Data)
+makeValueRef text = Transaction.newIRef ((Grid.initModel, Grid.initModel), TextEdit.initModel text)
 
-makeNodeRef :: Store d => d -> String -> [ITreeD] -> IO ITreeD
-makeNodeRef store text childrenRefs = do
-  ref <- makeValueRef store text
-  Store.newIRef store $ Node ref childrenRefs
+makeNodeRef :: MonadIO m => String -> [ITreeD] -> Transaction m ITreeD
+makeNodeRef text childrenRefs = do
+  ref <- makeValueRef text
+  Transaction.newIRef $ Node ref childrenRefs
 
-makeLeafRef :: Store d => d -> String -> IO ITreeD
-makeLeafRef db text = makeNodeRef db text []
+makeLeafRef :: MonadIO m => String -> Transaction m ITreeD
+makeLeafRef text = makeNodeRef text []
