@@ -1,36 +1,21 @@
-* Transactions:
+* Replace Store class with:
 
-  * A Monad for DB access, the monadic-ness is important for allowing
-    lookups and subsequent modifications based on lookup results.  The
-    monadic computation need not be associated with a particular
-    store.
+  * Is it nice to do:  class (Monad (TypeFunc t)) => SomeClass t where type TypeFunc t :: * -> * ?
 
-    Sadly, this requires GHC extensions...
+  * class (Monad (TMonad t)) => Transaction t where
+      type TMonad t :: * -> *
+      lookupBS :: ByteString -> Monad t (Maybe ByteString)
+      setTransaction :: [Change] -> Monad t ()
 
-  * class Store d where
-      type Transaction d :: * -> * -- Transaction monad to perform store operations in
-      lookup :: Monad (Transaction d) => 
+  * type Mona lookup :: 
+  
+  * StateT of changes
 
-    * lookup :: Store.Transaction (Maybe a)
-    * set :: ByteString -> ByteString -> Store.Transaction () 
+  * A lower monad that accesses the underlying "store" (used for read
+    access to implement lookups, and for eventual write access)
 
-  * instance Store Db where
-      type Transaction Db = IO
 
-  * instance Store View where
- -- a transformer around IO that keeps a write-log and can commit
-    eventually:
-      type Transaction Db = ViewTransaction
-
-  * Maybe need something like: LabelRef a b = LabelRef (IRef a) (a <-> b),
-    that can be used with any store, instead of Store.Ref?
-
-      * 4 components: Transaction, Store, Ref, FCLabel -- I want a
-        type that represents the last 3, but not the first
-
-      * Maybe Transaction should not be a Store? Maybe like Berkeley,
-        better to have a transaction argument?
-
+  
   * Currently I might update a branch ptr, and crash before the
     version map cache was updated:
 
