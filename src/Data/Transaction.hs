@@ -7,8 +7,11 @@ module Data.Transaction
      lookupBS, lookup,
      insertBS, insert,
      deleteBS, delete,
-     readIRef, writeIRef, newIRef,
-     fromIRef, followBy, follow, anchorRef)
+     readIRef, readIRefDef,
+     writeIRef, newIRef,
+     fromIRef, fromIRefDef,
+     followBy, follow,
+     anchorRef, anchorRefDef)
 where
 
 import Prelude hiding (lookup)
@@ -83,17 +86,29 @@ lookup = (liftM . liftM) decodeS . lookupBS
 insert :: (Monad m, Binary a) => ByteString -> a -> Transaction t m ()
 insert key = insertBS key . encodeS
 
+readIRefDef :: (Monad m, Binary a) => Transaction t m a -> IRef a -> Transaction t m a
+readIRefDef def iref =
+  maybe writeDefaultRet (return . decodeS) =<< lookupBS (IRef.bs iref)
+  where
+    writeDefaultRet = do
+      d <- def
+      writeIRef iref d
+      return d
+
 readIRef :: (Monad m, Binary a) => IRef a -> Transaction t m a
 readIRef iref =
   liftM decodeS $ unJust =<< lookupBS (IRef.bs iref)
   where
-    unJust = maybe (fail $ "IRef " ++ show iref ++ " to inexistent object dereferenced") return
+    unJust = maybe (fail $ show iref ++ " to inexistent object dereferenced") return
 
 writeIRef :: (Monad m, Binary a) => IRef a -> a -> Transaction t m ()
 writeIRef iref = insert (IRef.bs iref)
 
 fromIRef :: (Monad m, Binary a) => IRef a -> Property t m a
 fromIRef iref = Property.Property (readIRef iref) (writeIRef iref)
+
+fromIRefDef :: (Monad m, Binary a) => Transaction t m a -> IRef a -> Property t m a
+fromIRefDef def iref = Property.Property (readIRefDef def iref) (writeIRef iref)
 
 newIRef :: (MonadIO m, Binary a) => a -> Transaction t m (IRef a)
 newIRef val = do
@@ -116,6 +131,9 @@ follow = followBy id
 
 anchorRef :: (Monad m, Binary a) => String -> Property t m a
 anchorRef = fromIRef . IRef.anchorIRef
+
+anchorRefDef :: (Monad m, Binary a) => String -> Transaction t m a -> Property t m a
+anchorRefDef name def = fromIRefDef def . IRef.anchorIRef $ name
 
 run :: Monad m => Store t m -> Transaction t m a -> m a
 run store transaction = do
