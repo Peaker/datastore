@@ -8,7 +8,6 @@ import Control.Monad.IO.Class(MonadIO)
 import Control.Category((.))
 import Control.Monad(when, liftM)
 import Data.List.Utils(safeIndex)
-import Data.Record.Label.Tuple(first, second)
 import Data.IRef(IRef)
 import qualified Data.Transaction as Transaction
 import Data.Transaction(Transaction, Store)
@@ -111,15 +110,15 @@ makeTreeEdit :: MonadIO m => Transaction.Property ViewTag m [ITreeD] ->
 makeTreeEdit clipboardRef treeIRef = do
   valueRef <- Transaction.follow $ Data.nodeValueRef `composeLabel` treeRef
   makeTreeEdit'
-    (second `composeLabel` valueRef)
+    (Data.textEditModel `composeLabel` valueRef)
     -- HLint/haskell-src-exts doesn't know the fixity of composeLabel,
     -- so it's fixity resolver fails to parse the following without ()
     -- around the . expression. When it fails here, it avoids
     -- resolving all fixities, so it makes it complain about the above
     -- "Transaction.follow $ ..." expression that $ is redundant
     -- because it thinks the fixity of composeLabel is lower than $.
-    ((second . first) `composeLabel` valueRef)
-    ((first . first) `composeLabel` valueRef)
+    (Data.innerGridModel `composeLabel` valueRef)
+    (Data.outerGridModel `composeLabel` valueRef)
     (Data.nodeChildrenRefs `composeLabel` treeRef)
   where
     treeRef = Transaction.fromIRef treeIRef

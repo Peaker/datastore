@@ -14,13 +14,14 @@ import qualified Graphics.UI.VtyWidgets.TextEdit as TextEdit
 import qualified Editor.Data as Data
 import qualified Editor.Anchors as Anchors
 import Editor.Anchors(ViewTag, DBTag)
+import qualified Data.Record.Label as Label
 
 writeTreeXml :: MonadIO m => Handle -> Int -> IRef Data.TreeD -> Transaction ViewTag m ()
 writeTreeXml outFile depth iref = do
   let ref = Transaction.fromIRef iref
   value <- Property.get =<< Transaction.follow (Data.nodeValueRef `Property.composeLabel` ref)
   childrenIRefs <- Property.get (Data.nodeChildrenRefs `Property.composeLabel` ref)
-  let text = TextEdit.textEditText . snd $ value
+  let text = TextEdit.textEditText . Label.get Data.textEditModel $ value
       indent = (replicate (2 * depth) ' ' ++)
   liftIO . hPutStrLn outFile . indent $ "<" ++ text ++ ">"
   mapM_ (writeTreeXml outFile (depth + 1)) childrenIRefs
