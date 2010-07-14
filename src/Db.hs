@@ -65,7 +65,8 @@ transaction db changes = Berkeley.dbEnv_withTxn [] [] (dbEnv db) Nothing $ \txn 
     applyChange txn key Nothing = Berkeley.db_del [] (dbBerkeley db) (Just txn) key
     applyChange txn key (Just value) = Berkeley.db_put [] (dbBerkeley db) (Just txn) key value
 
-store :: Db -> Store IO
+-- You get a Store tagged however you like...
+store :: Db -> Store t IO
 store db = Store {
   storeLookup = lookup db,
   storeTransaction = transaction db

@@ -1,10 +1,10 @@
-* Version should also be an IRef wrapper around VersionData, like View
-  and Branch?
-
 * Have a reflog too
   * Implicit name for all Undo edges (carry around the "current undo
     rev" which moves with the current rev to make sure there's just
     one tag per undo sequence)
+
+* Version should also be an IRef wrapper around VersionData, like View
+  and Branch?
 
 * Add fromIRefDefault that replaces fromJust with fromMaybe -- remove
   lots of code from makeDb and just add defaults to Anchors

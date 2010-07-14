@@ -29,34 +29,36 @@ import Data.ByteString(ByteString)
 import qualified Data.Map as Map
 import Data.Map(Map)
 
-type Property m = Property.Property (Transaction m)
+type Property t m = Property.Property (Transaction t m)
 
 type Key = ByteString
 type Value = Maybe ByteString -- Nothing means delete, Just means insert/modify
 type Changes = Map Key Value
 
-data Store m = Store {
+-- 't' is a phantom-type tag meant to make sure you run Transactions
+-- with the right store
+data Store t m = Store {
   storeLookup :: ByteString -> m (Maybe ByteString),
   storeTransaction :: [(ByteString, Maybe ByteString)] -> m ()
   }
 
 -- Define transformer stack:
-newtype Transaction m a = Transaction {
-  unTransaction :: ReaderT (Store m) (StateT Changes m) a
+newtype Transaction t m a = Transaction {
+  unTransaction :: ReaderT (Store t m) (StateT Changes m) a
   -- TODO: To get rid of MonadIO I need to somehow remove dependency
   -- on IO from newGuid/newIRef.
   } deriving (Monad, Applicative, Functor, MonadIO)
-liftReaderT :: ReaderT (Store m) (StateT Changes m) a -> Transaction m a
+liftReaderT :: ReaderT (Store t m) (StateT Changes m) a -> Transaction t m a
 liftReaderT = Transaction
-liftStateT :: Monad m => StateT Changes m a -> Transaction m a
+liftStateT :: Monad m => StateT Changes m a -> Transaction t m a
 liftStateT = liftReaderT . lift
-liftInner :: Monad m => m a -> Transaction m a
+liftInner :: Monad m => m a -> Transaction t m a
 liftInner = Transaction . lift . lift
 -- TODO: Do I need the MonadTrans instance?
--- instance MonadTrans (Transaction m) where
+-- instance MonadTrans (Transaction t m) where
 --   lift = liftInner
 
-lookupBS :: Monad m => ByteString -> Transaction m (Maybe ByteString)
+lookupBS :: Monad m => ByteString -> Transaction t m (Maybe ByteString)
 lookupBS bs = do
   changes <- liftStateT get
   case Map.lookup bs changes of
@@ -66,34 +68,34 @@ lookupBS bs = do
     Just res ->
       return $ res
 
-insertBS :: Monad m => ByteString -> ByteString -> Transaction m ()
+insertBS :: Monad m => ByteString -> ByteString -> Transaction t m ()
 insertBS key = liftStateT . modify . Map.insert key . Just
 
-deleteBS :: Monad m => ByteString -> Transaction m ()
+deleteBS :: Monad m => ByteString -> Transaction t m ()
 deleteBS key = liftStateT . modify . Map.insert key $ Nothing
 
-delete :: Monad m => ByteString -> Transaction m ()
+delete :: Monad m => ByteString -> Transaction t m ()
 delete = deleteBS
 
-lookup :: (Monad m, Binary a) => ByteString -> Transaction m (Maybe a)
+lookup :: (Monad m, Binary a) => ByteString -> Transaction t m (Maybe a)
 lookup = (liftM . liftM) decodeS . lookupBS
 
-insert :: (Monad m, Binary a) => ByteString -> a -> Transaction m ()
+insert :: (Monad m, Binary a) => ByteString -> a -> Transaction t m ()
 insert key = insertBS key . encodeS
 
-readIRef :: (Monad m, Binary a) => IRef a -> Transaction m a
+readIRef :: (Monad m, Binary a) => IRef a -> Transaction t m a
 readIRef iref =
   liftM decodeS $ unJust =<< lookupBS (IRef.bs iref)
   where
     unJust = maybe (fail $ "IRef " ++ show iref ++ " to inexistent object dereferenced") return
 
-writeIRef :: (Monad m, Binary a) => IRef a -> a -> Transaction m ()
+writeIRef :: (Monad m, Binary a) => IRef a -> a -> Transaction t m ()
 writeIRef iref = insert (IRef.bs iref)
 
-fromIRef :: (Monad m, Binary a) => IRef a -> Property m a
+fromIRef :: (Monad m, Binary a) => IRef a -> Property t m a
 fromIRef iref = Property.Property (readIRef iref) (writeIRef iref)
 
-newIRef :: (MonadIO m, Binary a) => a -> Transaction m (IRef a)
+newIRef :: (MonadIO m, Binary a) => a -> Transaction t m (IRef a)
 newIRef val = do
   newGuid <- liftInner . liftIO $ Guid.new
   insert (Guid.bs newGuid) val
@@ -101,21 +103,21 @@ newIRef val = do
 
 followBy :: (Monad m, Binary a) =>
             (b -> IRef a) ->
-            Property m b ->
-            Transaction m (Property m a)
+            Property t m b ->
+            Transaction t m (Property t m a)
 followBy conv = liftM (fromIRef . conv) . Property.get
 
 -- Dereference the *current* value of the IRef (Will not track new
 -- values of IRef, by-value and not by-name)
 follow :: (Monad m, Binary a) =>
-          Property m (IRef a) ->
-          Transaction m (Property m a)
+          Property t m (IRef a) ->
+          Transaction t m (Property t m a)
 follow = followBy id
 
-anchorRef :: (Monad m, Binary a) => String -> Property m a
+anchorRef :: (Monad m, Binary a) => String -> Property t m a
 anchorRef = fromIRef . IRef.anchorIRef
 
-run :: Monad m => Store m -> Transaction m a -> m a
+run :: Monad m => Store t m -> Transaction t m a -> m a
 run store transaction = do
   (res, changes) <- (`runStateT` mempty) . (`runReaderT` store) . unTransaction $ transaction
   storeTransaction store (Map.toList changes)

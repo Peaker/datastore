@@ -31,7 +31,7 @@ main =
     Property.set Anchors.branchSelector Grid.initModel
     Property.set Anchors.mainGrid Grid.initModel
 
-    Transaction.run (View.store view) $ do
+    Transaction.run (Anchors.viewStore view) $ do
       childrenRefs <- mapM (Data.makeLeafRef . show) [1..10 :: Int]
       rootIRef <- Data.makeNodeRef "tree root value" childrenRefs
       Property.set Anchors.rootIRef rootIRef

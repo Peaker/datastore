@@ -38,10 +38,10 @@ newtype VersionMap = VersionMap {
 makeKey :: VersionMap -> Change.Key -> ByteString
 makeKey = xorBS . Guid.bs . IRef.guid . vmKey
 
-lookup :: Monad m => VersionMap -> Change.Key -> Transaction m (Maybe Change.Value)
+lookup :: Monad m => VersionMap -> Change.Key -> Transaction t m (Maybe Change.Value)
 lookup vm = Transaction.lookupBS . makeKey vm
 
-applyChanges :: Monad m => VersionMap -> Change.Dir -> [Change] -> Transaction m ()
+applyChanges :: Monad m => VersionMap -> Change.Dir -> [Change] -> Transaction t m ()
 applyChanges vm changeDir = mapM_ applyChange
   where
     applyChange change = setValue
@@ -50,7 +50,7 @@ applyChanges vm changeDir = mapM_ applyChange
     setValue key Nothing      = Transaction.deleteBS key
     setValue key (Just value) = Transaction.insertBS key value
 
-move :: Monad m => VersionMap -> IRef Version -> Transaction m ()
+move :: Monad m => VersionMap -> IRef Version -> Transaction t m ()
 move vm destVersionIRef = do
   let vmDataRef = Transaction.fromIRef . vmKey $ vm
   VersionMapData srcVersionIRef <- Property.get vmDataRef
@@ -63,7 +63,7 @@ move vm destVersionIRef = do
     applyBackward = apply Change.oldValue
     apply changeDir version = applyChanges vm changeDir . Version.changes $ version
 
-new :: MonadIO m => IRef Version -> Transaction m VersionMap
+new :: MonadIO m => IRef Version -> Transaction t m VersionMap
 new versionIRef = do
   vm <- VersionMap `liftM` Transaction.newIRef (VersionMapData versionIRef)
   applyHistory vm =<< Transaction.readIRef versionIRef

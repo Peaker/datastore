@@ -19,13 +19,13 @@ type TreeD = Tree Data
 
 type ITree a = IRef (Tree a)
 
-makeValueRef :: MonadIO m => String -> Transaction m (IRef Data)
+makeValueRef :: MonadIO m => String -> Transaction t m (IRef Data)
 makeValueRef text = Transaction.newIRef ((Grid.initModel, Grid.initModel), TextEdit.initModel text)
 
-makeNodeRef :: MonadIO m => String -> [ITreeD] -> Transaction m ITreeD
+makeNodeRef :: MonadIO m => String -> [ITreeD] -> Transaction t m ITreeD
 makeNodeRef text childrenRefs = do
   ref <- makeValueRef text
   Transaction.newIRef $ Node ref childrenRefs
 
-makeLeafRef :: MonadIO m => String -> Transaction m ITreeD
+makeLeafRef :: MonadIO m => String -> Transaction t m ITreeD
 makeLeafRef text = makeNodeRef text []

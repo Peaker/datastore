@@ -23,17 +23,17 @@ newtype BranchData = BranchData {
 newtype Branch = Branch (IRef BranchData)
   deriving (Eq, Ord, Read, Show, Binary)
 
-new :: MonadIO m => IRef Version -> Transaction m Branch
+new :: MonadIO m => IRef Version -> Transaction t m Branch
 new versionIRef = Branch `liftM`
                   Transaction.newIRef (BranchData versionIRef)
 
-move :: Monad m => Branch -> IRef Version -> Transaction m ()
+move :: Monad m => Branch -> IRef Version -> Transaction t m ()
 move (Branch dataIRef) dest = Transaction.writeIRef dataIRef (BranchData dest)
 
-curVersionIRef :: Monad m => Branch -> Transaction m (IRef Version)
+curVersionIRef :: Monad m => Branch -> Transaction t m (IRef Version)
 curVersionIRef (Branch dataIRef) = brVersionIRef `liftM` Transaction.readIRef dataIRef
 
-newVersion :: MonadIO m => Branch -> [Change] -> Transaction m ()
+newVersion :: MonadIO m => Branch -> [Change] -> Transaction t m ()
 newVersion branch changes = do
   versionIRef <- curVersionIRef branch
   move branch =<< Version.newVersion versionIRef changes

@@ -23,15 +23,15 @@ instance Binary Version where
   get = liftM3 Version get get get
   put (Version d p c) = put d >> put p >> put c
 
-makeInitialVersion :: MonadIO m => Transaction m (IRef Version)
+makeInitialVersion :: MonadIO m => Transaction t m (IRef Version)
 makeInitialVersion = Transaction.newIRef $ Version 0 Nothing []
 
-newVersion :: MonadIO m => IRef Version -> [Change] -> Transaction m (IRef Version)
+newVersion :: MonadIO m => IRef Version -> [Change] -> Transaction t m (IRef Version)
 newVersion versionIRef newChanges = do
   parentDepth <- depth `liftM` Transaction.readIRef versionIRef
   Transaction.newIRef $ Version (parentDepth+1) (Just versionIRef) newChanges
 
-mostRecentAncestor :: Monad m => IRef Version -> IRef Version -> Transaction m (IRef Version)
+mostRecentAncestor :: Monad m => IRef Version -> IRef Version -> Transaction t m (IRef Version)
 mostRecentAncestor = mra
   where
     mra aIRef bIRef
@@ -53,7 +53,7 @@ mostRecentAncestor = mra
         mra aParentRef bParentRef
     nonZeroDepth = maybe (fail "Non-0 depth must have a parent") return
 
-walkUp :: Monad m => (Version -> Transaction m ()) -> IRef Version -> IRef Version -> Transaction m ()
+walkUp :: Monad m => (Version -> Transaction t m ()) -> IRef Version -> IRef Version -> Transaction t m ()
 walkUp onVersion topRef bottomRef
   | bottomRef == topRef  = return ()
   | otherwise            = do
@@ -65,7 +65,7 @@ walkUp onVersion topRef bottomRef
 -- We can't directly walkDown (we don't have references pointing
 -- downwards... But we can generate a list of versions by walking up
 -- and accumulating a reverse list)
-versionsBetween :: Monad m => IRef Version -> IRef Version -> Transaction m [Version]
+versionsBetween :: Monad m => IRef Version -> IRef Version -> Transaction t m [Version]
 versionsBetween topRef bottomRef = accumulateWalkUp [] bottomRef
   where
     accumulateWalkUp vs curRef
@@ -76,6 +76,6 @@ versionsBetween topRef bottomRef = accumulateWalkUp [] bottomRef
           parent version
 
 -- Implement in terms of versionsBetween
-walkDown :: Monad m => (Version -> Transaction m ()) -> IRef Version -> IRef Version -> Transaction m ()
+walkDown :: Monad m => (Version -> Transaction t m ()) -> IRef Version -> IRef Version -> Transaction t m ()
 walkDown onVersion topRef bottomRef =
   mapM_ onVersion =<< versionsBetween topRef bottomRef

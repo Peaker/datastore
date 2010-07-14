@@ -36,6 +36,7 @@ import qualified Db
 import Editor.Data(ITreeD, TreeD)
 import qualified Editor.Data as Data
 import qualified Editor.Anchors as Anchors
+import Editor.Anchors(DBTag, ViewTag)
 import qualified Editor.Config as Config
 
 indent :: Int -> Display a -> Display a
@@ -45,9 +46,9 @@ yGridCursor :: Int -> Grid.Model
 yGridCursor = Grid.Model . Vector2 0
 
 appendGridChild :: Monad m =>
-                   Transaction.Property m Grid.Model ->
-                   Transaction.Property m [a] ->
-                   a -> Transaction m ()
+                   Transaction.Property t m Grid.Model ->
+                   Transaction.Property t m [a] ->
+                   a -> Transaction t m ()
 appendGridChild gridModelRef valuesRef value = do
   values <- Property.get valuesRef
   Property.set valuesRef (values ++ [value])
@@ -57,9 +58,9 @@ removeAt :: Int -> [a] -> [a]
 removeAt n xs = take n xs ++ drop (n+1) xs
 
 popCurChild :: Monad m =>
-               Transaction.Property m Grid.Model ->
-               Transaction.Property m [a] ->
-               Transaction m (Maybe a)
+               Transaction.Property t m Grid.Model ->
+               Transaction.Property t m [a] ->
+               Transaction t m (Maybe a)
 popCurChild gridModelRef valuesRef = do
   values <- Property.get valuesRef
   curIndex <- (Vector2.snd . Grid.modelCursor) `liftM`
@@ -74,25 +75,25 @@ popCurChild gridModelRef valuesRef = do
         Property.pureModify gridModelRef . Grid.inModel . Vector2.second $ subtract 1
 
 makeGrid :: Monad m =>
-            [[Widget (Transaction m ())]] ->
-            Transaction.Property m Grid.Model ->
-            Transaction m (Widget (Transaction m ()))
+            [[Widget (Transaction t m ())]] ->
+            Transaction.Property t m Grid.Model ->
+            Transaction t m (Widget (Transaction t m ()))
 makeGrid rows gridModelRef =
   Grid.make (Property.set gridModelRef) rows `liftM`
   Property.get gridModelRef
 
 makeTextEdit :: Monad m => Int -> Vty.Attr -> Vty.Attr ->
-                Transaction.Property m TextEdit.Model ->
-                Transaction m (Widget (Transaction m ()))
+                Transaction.Property t m TextEdit.Model ->
+                Transaction t m (Widget (Transaction t m ()))
 makeTextEdit maxLines defAttr editAttr textEditModelRef =
   liftM (fmap (Property.set textEditModelRef) .
         TextEdit.make "<empty>" maxLines defAttr editAttr) $
   Property.get textEditModelRef
 
 makeChoiceWidget :: Monad m =>
-                    [(Widget (Transaction m ()), k)] ->
-                    Transaction.Property m Grid.Model ->
-                    Transaction m (Widget (Transaction m ()), k)
+                    [(Widget (Transaction t m ()), k)] ->
+                    Transaction.Property t m Grid.Model ->
+                    Transaction t m (Widget (Transaction t m ()), k)
 makeChoiceWidget keys gridModelRef = do
   widget <- makeGrid rows gridModelRef
   itemIndex <- (Vector2.snd .
@@ -104,9 +105,9 @@ makeChoiceWidget keys gridModelRef = do
     widgets = map fst keys
     items = map snd keys
 
-makeTreeEdit :: MonadIO m => Transaction.Property m [ITreeD] ->
+makeTreeEdit :: MonadIO m => Transaction.Property ViewTag m [ITreeD] ->
                 IRef TreeD ->
-                Transaction m (Widget (Transaction m ()))
+                Transaction ViewTag m (Widget (Transaction ViewTag m ()))
 makeTreeEdit clipboardRef treeIRef = do
   valueRef <- Transaction.follow $ Data.nodeValueRef `composeLabel` treeRef
   makeTreeEdit'
@@ -182,8 +183,8 @@ makeTreeEdit clipboardRef treeIRef = do
           Property.pureModify childrenIRefsRef $ removeAt index
 
 makeEditWidget :: MonadIO m =>
-                  Transaction.Property m [ITreeD] ->
-                  Transaction m (Widget (Transaction m ()))
+                  Transaction.Property ViewTag m [ITreeD] ->
+                  Transaction ViewTag m (Widget (Transaction ViewTag m ()))
 makeEditWidget clipboardRef = do
   rootIRef <- Property.get rootIRefRef
   focalPointIRef <- Property.get focalPointIRefRef
@@ -204,20 +205,19 @@ makeEditWidget clipboardRef = do
 -- the nested transaction
 type MWidget m = m (Widget (m ()))
 widgetDownTransaction :: MonadIO m =>
-                         Store m ->
-                         MWidget (Transaction m) ->
+                         Store t m ->
+                         MWidget (Transaction t m) ->
                          MWidget m
 widgetDownTransaction store = runTrans . (liftM . fmap) runTrans
   where
     runTrans = Transaction.run store
 
 -- Apply the transactions to the given View and convert them to
--- transactions on a DB. Returns a Db transaction, not a view
--- transaction:
-makeWidgetForView :: MonadIO m => View -> Transaction m (Widget (Transaction m ()))
+-- transactions on a DB
+makeWidgetForView :: MonadIO m => View -> Transaction DBTag m (Widget (Transaction DBTag m ()))
 makeWidgetForView view = do
   version <- View.curVersion view
-  widget <- widgetDownTransaction (View.store view) $ do
+  widget <- widgetDownTransaction (Anchors.viewStore view) $ do
               clipboardP <- Transaction.follow Anchors.clipboardIRef
               makeEditWidget clipboardP
   return $ Widget.strongerKeys (keymaps version) widget
@@ -238,7 +238,7 @@ makeWidgetForView view = do
         else mempty
 
 main :: IO ()
-main = Db.withDb "/tmp/db.db" $ Run.widgetLoopWithOverlay 20 30 . const . makeWidget . Db.store
+main = Db.withDb "/tmp/db.db" $ Run.widgetLoopWithOverlay 20 30 . const . makeWidget . Anchors.dbStore
   where
     makeWidget dbStore = widgetDownTransaction dbStore $ do
       versionMap <- Property.get Anchors.versionMap

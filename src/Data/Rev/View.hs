@@ -23,31 +23,31 @@ data View = View { cache :: VersionMap,
 make :: VersionMap -> Branch -> View
 make = View
 
-curVersionIRef :: Monad m => View -> Transaction m (IRef Version)
+curVersionIRef :: Monad m => View -> Transaction t m (IRef Version)
 curVersionIRef view = Branch.curVersionIRef (branch view)
 
-curVersion :: Monad m => View -> Transaction m Version
+curVersion :: Monad m => View -> Transaction t m Version
 curVersion view = Transaction.readIRef =<< curVersionIRef view
 
-move :: MonadIO m => View -> IRef Version -> Transaction m ()
+move :: MonadIO m => View -> IRef Version -> Transaction t m ()
 move = Branch.move . branch
 
-newVersion :: MonadIO m => View -> [Change] -> Transaction m ()
+newVersion :: MonadIO m => View -> [Change] -> Transaction t m ()
 newVersion view = Branch.newVersion (branch view)
 
-sync :: Monad m => View -> Transaction m ()
+sync :: Monad m => View -> Transaction t m ()
 sync view = VersionMap.move (cache view) =<< Branch.curVersionIRef (branch view)
 
 -- unsafe because it assumes you sync'd:
-unsafeLookupBS :: Monad m => View -> Change.Key -> Transaction m (Maybe Change.Value)
+unsafeLookupBS :: Monad m => View -> Change.Key -> Transaction t m (Maybe Change.Value)
 unsafeLookupBS view = VersionMap.lookup (cache view)
 
-lookup :: Monad m => View -> Change.Key -> Transaction m (Maybe Change.Value)
+lookup :: Monad m => View -> Change.Key -> Transaction t m (Maybe Change.Value)
 lookup view objKey = do
   sync view
   unsafeLookupBS view objKey
 
-transaction :: MonadIO m => View -> [(Change.Key, Maybe Change.Value)] -> Transaction m ()
+transaction :: MonadIO m => View -> [(Change.Key, Maybe Change.Value)] -> Transaction t m ()
 transaction _    [] = return ()
 transaction view changes = do
   sync view
@@ -56,7 +56,8 @@ transaction view changes = do
     viewMakeChange key value =
       flip (Change.make key) value `liftM` unsafeLookupBS view key
 
-store :: MonadIO m => View -> Store (Transaction m)
+-- You get a store tagged however you like...
+store :: MonadIO m => View -> Store t' (Transaction t m)
 store view = Store {
   storeLookup = lookup view,
   storeTransaction = transaction view
