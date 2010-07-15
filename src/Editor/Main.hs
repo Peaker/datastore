@@ -243,18 +243,18 @@ main = Db.withDb "/tmp/db.db" $ Run.widgetLoopWithOverlay 20 30 . const . makeWi
       versionMap <- Property.get Anchors.versionMap
       branches <- Property.get Anchors.branches
       pairs <- mapM pair branches
-      (viewSelector, branch) <- makeChoiceWidget pairs $ Anchors.branchSelector
+      (viewSelector, branch) <- makeChoiceWidget pairs Anchors.branchSelector
       let view = View.make versionMap branch
       viewEdit <- Widget.strongerKeys quitKeymap
                   `liftM` makeWidgetForView view
       makeGrid
         [[viewEdit,
           Widget.simpleDisplay Spacer.makeHorizontal,
-          Widget.strongerKeys (delBranchKeymap branches) viewSelector]] $
+          Widget.strongerKeys (delBranchKeymap branches) viewSelector]]
         Anchors.mainGrid
 
     delBranchKeymap [_] = mempty
-    delBranchKeymap _ = Keymap.simpleton "Delete Branch" Config.delBranchKey $ deleteCurBranch
+    delBranchKeymap _ = Keymap.simpleton "Delete Branch" Config.delBranchKey deleteCurBranch
     quitKeymap = Keymap.simpleton "Quit" Config.quitKey . fail $ "Quit"
 
     deleteCurBranch = do

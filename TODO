@@ -2,8 +2,10 @@
 
 * Collapsing
 
-  * extra Bool in each tree value
-  * minus left of everyone
+  * Use a simple TextView with a whenFocused (blue bg) image to show a
+    [-] vs [+] collapser
+  * extra Bool in each tree value (Collapsed)
+    * Don't recurse on children if collapsed
 
 * Attributes, text leaf GUI widgets
 

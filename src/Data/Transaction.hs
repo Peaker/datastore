@@ -68,8 +68,7 @@ lookupBS bs = do
     Nothing -> do
       store <- liftReaderT ask
       liftInner $ storeLookup store bs
-    Just res ->
-      return $ res
+    Just res -> return res
 
 insertBS :: Monad m => ByteString -> ByteString -> Transaction t m ()
 insertBS key = liftStateT . modify . Map.insert key . Just
