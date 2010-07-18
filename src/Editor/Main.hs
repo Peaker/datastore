@@ -4,6 +4,8 @@
 module Main(main) where
 
 import Prelude hiding ((.))
+import Control.Arrow(first)
+import Control.Applicative(pure)
 import Control.Monad.IO.Class(MonadIO)
 import Control.Category((.))
 import Control.Monad(when, liftM)
@@ -17,16 +19,20 @@ import qualified Data.Rev.View as View
 import Data.Rev.View(View)
 import qualified Data.Rev.Version as Version
 import qualified Data.Rev.Branch as Branch
-import Data.Monoid(mempty, mappend)
+import Data.Monoid(Monoid(..))
 import Data.Maybe(fromMaybe, fromJust)
+import Data.Vector.Rect(Rect(Rect))
 import Data.Vector.Vector2(Vector2(..))
 import qualified Data.Vector.Vector2 as Vector2
 import qualified Graphics.Vty as Vty
+import qualified Graphics.UI.VtyWidgets.Align as Align
+import qualified Graphics.UI.VtyWidgets.TextView as TextView
 import qualified Graphics.UI.VtyWidgets.TextEdit as TextEdit
 import qualified Graphics.UI.VtyWidgets.Grid as Grid
 import qualified Graphics.UI.VtyWidgets.Spacer as Spacer
 import qualified Graphics.UI.VtyWidgets.Widget as Widget
 import qualified Graphics.UI.VtyWidgets.Keymap as Keymap
+import qualified Graphics.UI.VtyWidgets.TermImage as TermImage
 import Graphics.UI.VtyWidgets.Display(Display)
 import qualified Graphics.UI.VtyWidgets.SizeRange as SizeRange
 import Graphics.UI.VtyWidgets.Widget(Widget)
@@ -38,8 +44,11 @@ import qualified Editor.Anchors as Anchors
 import Editor.Anchors(DBTag, ViewTag)
 import qualified Editor.Config as Config
 
+widthSpace :: Int -> Display a
+widthSpace width = Spacer.make . SizeRange.fixedSize $ Vector2 width 0
+
 indent :: Int -> Display a -> Display a
-indent width disp = Grid.makeView [[Spacer.make (SizeRange.fixedSize (Vector2 width 0)), disp]]
+indent width disp = Grid.makeView [[widthSpace width, disp]]
 
 yGridCursor :: Int -> Grid.Model
 yGridCursor = Grid.Model . Vector2 0
@@ -104,55 +113,102 @@ makeChoiceWidget keys gridModelRef = do
     widgets = map fst keys
     items = map snd keys
 
-makeTreeEdit :: MonadIO m => Transaction.Property ViewTag m [ITreeD] ->
+makeChildGrid :: MonadIO m =>
+                 Transaction.Property ViewTag m [ITreeD] ->
+                 Transaction.Property ViewTag m Grid.Model ->
+                 Transaction.Property ViewTag m [ITreeD] ->
+                 Transaction ViewTag m (Widget (Transaction ViewTag m ()))
+makeChildGrid clipboardRef childrenGridModelRef childrenIRefsRef = do
+  childItems <- mapM (makeTreeEdit clipboardRef) =<< Property.get childrenIRefsRef
+  curChildIndex <- getChildIndex . length $ childItems
+  childGrid <- makeGrid (map (: []) childItems) childrenGridModelRef
+  return .
+    Widget.strongerKeys
+    (mappend
+     delNodeKeymap cutNodeKeymap
+     curChildIndex) .
+    Widget.atDisplay (indent 5) $
+    childGrid
+  where
+    cutNodeKeymap = fromMaybe mempty .
+                    liftM (Keymap.simpleton "Cut node" Config.cutKey . cutChild)
+    delNodeKeymap = fromMaybe mempty .
+                    liftM (Keymap.simpleton "Del node" Config.delChildKey . delChild)
+    cutChild index = do
+      childrenIRefs <- Property.get childrenIRefsRef
+      Property.pureModify clipboardRef (childrenIRefs !! index :)
+      delChild index
+    delChild index =
+      Property.pureModify childrenIRefsRef $ removeAt index
+    getChildIndex count = (validateIndex count . Vector2.snd . Grid.modelCursor) `liftM`
+                          Property.get childrenGridModelRef
+    validateIndex count index
+      | 0 <= index && index < count = Just index
+      | otherwise = Nothing
+
+makeTreeEdit :: MonadIO m =>
+                Transaction.Property ViewTag m [ITreeD] ->
                 IRef TreeD ->
                 Transaction ViewTag m (Widget (Transaction ViewTag m ()))
 makeTreeEdit clipboardRef treeIRef = do
   valueRef <- Transaction.follow $ Data.nodeValueRef `composeLabel` treeRef
   makeTreeEdit'
     (Data.textEditModel `composeLabel` valueRef)
-    -- HLint/haskell-src-exts doesn't know the fixity of composeLabel,
-    -- so it's fixity resolver fails to parse the following without ()
-    -- around the . expression. When it fails here, it avoids
-    -- resolving all fixities, so it makes it complain about the above
-    -- "Transaction.follow $ ..." expression that $ is redundant
-    -- because it thinks the fixity of composeLabel is lower than $.
     (Data.innerGridModel `composeLabel` valueRef)
+    (Data.treeNodeGridModel `composeLabel` valueRef)
     (Data.outerGridModel `composeLabel` valueRef)
     (Data.nodeChildrenRefs `composeLabel` treeRef)
+    (Data.isExpanded `composeLabel` valueRef)
   where
     treeRef = Transaction.fromIRef treeIRef
     makeTreeEdit'
       valueTextEditModelRef
       childrenGridModelRef
+      treeNodeGridModelRef
       outerGridModelRef
       childrenIRefsRef
+      isExpandedRef
       = do
-        valueEdit <- makeTextEdit 2
-                     TextEdit.defaultAttr TextEdit.editingAttr
+        valueEdit <- (Widget.atKeymap . Keymap.removeKeys)
+                     [Config.expandKey, Config.collapseKey] `liftM`
+                     makeTextEdit 2 TextEdit.defaultAttr TextEdit.editingAttr
                      valueTextEditModelRef
-        childItems <- mapM (makeTreeEdit clipboardRef) =<< Property.get childrenIRefsRef
-        curChildIndex <- getChildIndex . length $ childItems
-        childGrid <- makeGrid (map (: []) childItems) childrenGridModelRef
-        let childGrid' = Widget.strongerKeys
-                         (mappend
-                          delNodeKeymap cutNodeKeymap
-                          curChildIndex) .
-                         Widget.atDisplay (indent 5) $
-                         childGrid
-        outerGrid <- makeGrid [[valueEdit], [childGrid']] outerGridModelRef
+        isExpanded <- Property.get isExpandedRef
+        lowRow <- if isExpanded
+                  then ((:[]) . (:[])) `liftM`
+                       makeChildGrid clipboardRef childrenGridModelRef childrenIRefsRef
+                  else return []
+        cValueEdit <- makeGrid [[collapser isExpanded,
+                                 Widget.simpleDisplay $ widthSpace 1,
+                                 valueEdit]] treeNodeGridModelRef
+        outerGrid <- makeGrid ([cValueEdit] : lowRow) outerGridModelRef
         clipboard <- Property.get clipboardRef
-        return .
-          Widget.strongerKeys (pasteKeymap clipboard `mappend`
-                               appendNewNodeKeymap `mappend`
-                               setRootKeymap) $
-          outerGrid
+        let keymap =
+              mconcat [
+                pasteKeymap clipboard,
+                appendNewNodeKeymap,
+                setRootKeymap,
+                expandCollapseKeymap isExpanded
+                ]
+        return . Widget.weakerKeys keymap $ outerGrid
       where
-        validateIndex count index
-          | 0 <= index && index < count = Just index
-          | otherwise = Nothing
-        getChildIndex count = (validateIndex count . Vector2.snd . Grid.modelCursor) `liftM`
-                              Property.get childrenGridModelRef
+        expandCollapseKeymap isExpanded =
+          if isExpanded
+          then Keymap.simpleton "Collapse" Config.collapseKey collapse
+          else Keymap.simpleton "Expand" Config.expandKey expand
+        collapse = Property.set isExpandedRef False
+        expand = Property.set isExpandedRef True
+        collapser isExpanded =
+          (Widget.atDisplay . Align.to $ Vector2 0 0) .
+          Widget.whenFocused modifyMkImage .
+          Widget.simpleDisplay .
+          TextView.make Vty.def_attr $
+          if isExpanded
+          then "[-]"
+          else "[+]"
+        modifyMkImage mkImage size =
+          mkImage size `mappend`
+          TermImage.rect (Rect (pure 0) size) (first (`Vty.with_back_color` Vty.blue))
         pasteKeymap [] = mempty
         pasteKeymap (cbChildRef:xs) =
           Keymap.simpleton "Paste" Config.pasteKey $ do
@@ -160,10 +216,6 @@ makeTreeEdit clipboardRef treeIRef = do
             Property.set clipboardRef xs
         appendNewNodeKeymap = Keymap.simpleton "Append new child node"
                               Config.appendChildKey appendNewChild
-        cutNodeKeymap = fromMaybe mempty .
-                        liftM (Keymap.simpleton "Cut node" Config.cutKey . cutChild)
-        delNodeKeymap = fromMaybe mempty .
-                        liftM (Keymap.simpleton "Del node" Config.delChildKey . delChild)
         setRootKeymap =
           Keymap.simpleton "Set focal point" Config.setFocalPointKey $
             Property.set Anchors.focalPointIRef treeIRef
@@ -174,12 +226,6 @@ makeTreeEdit clipboardRef treeIRef = do
         appendChild newRef = do
           appendGridChild childrenGridModelRef childrenIRefsRef newRef
           Property.set outerGridModelRef $ yGridCursor 1
-        cutChild index = do
-          childrenIRefs <- Property.get childrenIRefsRef
-          Property.pureModify clipboardRef (childrenIRefs !! index :)
-          delChild index
-        delChild index =
-          Property.pureModify childrenIRefsRef $ removeAt index
 
 makeEditWidget :: MonadIO m =>
                   Transaction.Property ViewTag m [ITreeD] ->
