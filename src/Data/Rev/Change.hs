@@ -10,8 +10,9 @@ import Control.Monad(liftM3)
 import Data.ByteString(ByteString)
 import Data.Binary(Binary(..))
 import Data.Record.Label((:->), mkLabels, label)
+import Data.Guid(Guid)
 
-type Key = ByteString
+type Key = Guid
 type Value = ByteString
 
 -- TODO: Store the smaller of (Maybe Value) and (IRef Value)

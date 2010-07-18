@@ -2,12 +2,12 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, TypeOperators #-}
 
 module Data.IRef
-    (IRef, guid, unsafeFromGuid, anchorIRef, bs)
+    (IRef, guid, unsafeFromGuid, anchorIRef)
 where
 
 import Data.Binary(Binary)
-import Data.ByteString.UTF8(ByteString, fromString)
-import Data.Guid(Guid(Guid))
+import Data.ByteString.UTF8(fromString)
+import Data.Guid(Guid)
 import qualified Data.Guid as Guid
 
 newtype IRef a = IRef {
@@ -20,7 +20,4 @@ unsafeFromGuid :: Guid -> IRef a
 unsafeFromGuid = IRef
 
 anchorIRef :: (Binary a) => String -> IRef a
-anchorIRef = unsafeFromGuid . Guid . fromString
-
-bs :: IRef a -> ByteString
-bs = Guid.bs . guid
+anchorIRef = unsafeFromGuid . Guid.make . fromString

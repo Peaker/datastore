@@ -1,11 +1,12 @@
 {-# OPTIONS -O2 -Wall #-}
 
 module Data.Guid
-    (Guid(..), length, new, xor)
+    (Guid, make, bs, length, new, xor)
 where
 
 import Prelude hiding (length)
 import qualified Data.ByteString as SBS
+import Data.Monoid(mappend)
 import Data.ByteString.Utils(randomBS, xorBS)
 import Data.Binary(Binary(..))
 import Data.Binary.Get(getByteString)
@@ -19,12 +20,20 @@ inGuid2 :: (SBS.ByteString -> SBS.ByteString -> SBS.ByteString) ->
            Guid -> Guid -> Guid
 inGuid2 f = inGuid . f . bs
 
+length :: Int
+length = 16
+
+make :: SBS.ByteString -> Guid
+make bytes
+  | l > length = error ("Invalid GUID: too long: " ++ show bytes)
+  | l < length = Guid $ bytes `mappend` SBS.replicate (length - l) 0
+  | otherwise  = Guid bytes
+  where
+    l = SBS.length bytes
+
 instance Binary Guid where
   get = Guid `fmap` getByteString length
   put = putByteString . bs
-
-length :: Int
-length = 16
 
 new :: IO Guid
 new = Guid `fmap` randomBS length

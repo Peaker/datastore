@@ -5,13 +5,15 @@ module Db
      withCursor, nextKeyBS, nextKey, lookup, transaction, store)
 where
 
-import Data.Binary.Utils(decodeS)
 import Control.Arrow(second)
 import Control.Exception(bracket)
 import Prelude hiding (lookup)
 import qualified Database.Berkeley.Db as Berkeley
 import Data.ByteString(ByteString)
 import Data.Binary(Binary)
+import Data.Binary.Utils(decodeS)
+import Data.Guid(Guid)
+import qualified Data.Guid as Guid
 import Data.Transaction(Store(..))
 import System.Directory(createDirectoryIfMissing)
 
@@ -55,15 +57,15 @@ nextKey cursor = (fmap . fmap . second) decodeS (nextKeyBS cursor)
 withDb :: FilePath -> (Db -> IO a) -> IO a
 withDb filePath = bracket (open filePath) close
 
-lookup :: Db -> ByteString -> IO (Maybe ByteString)
-lookup db = Berkeley.db_get [] (dbBerkeley db) Nothing
+lookup :: Db -> Guid -> IO (Maybe ByteString)
+lookup db = Berkeley.db_get [] (dbBerkeley db) Nothing . Guid.bs
 
-transaction :: Db -> [(ByteString, Maybe ByteString)] -> IO ()
+transaction :: Db -> [(Guid, Maybe ByteString)] -> IO ()
 transaction db changes = Berkeley.dbEnv_withTxn [] [] (dbEnv db) Nothing $ \txn ->
   mapM_ (uncurry (applyChange txn)) changes
   where
-    applyChange txn key Nothing = Berkeley.db_del [] (dbBerkeley db) (Just txn) key
-    applyChange txn key (Just value) = Berkeley.db_put [] (dbBerkeley db) (Just txn) key value
+    applyChange txn key Nothing = Berkeley.db_del [] (dbBerkeley db) (Just txn) (Guid.bs key)
+    applyChange txn key (Just value) = Berkeley.db_put [] (dbBerkeley db) (Just txn) (Guid.bs key) value
 
 -- You get a Store tagged however you like...
 store :: Db -> Store t IO

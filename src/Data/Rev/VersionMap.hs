@@ -12,8 +12,7 @@ import Prelude hiding (lookup)
 import Control.Monad.IO.Class(MonadIO)
 import Control.Monad(liftM, (<=<))
 import qualified Data.Record.Label as Label
-import Data.ByteString(ByteString)
-import Data.ByteString.Utils(xorBS)
+import Data.Guid(Guid)
 import Data.Binary(Binary)
 import qualified Data.Property as Property
 import Data.IRef(IRef)
@@ -35,8 +34,8 @@ newtype VersionMap = VersionMap {
   }
   deriving (Eq, Ord, Binary)
 
-makeKey :: VersionMap -> Change.Key -> ByteString
-makeKey = xorBS . Guid.bs . IRef.guid . vmKey
+makeKey :: VersionMap -> Change.Key -> Guid
+makeKey = Guid.xor . IRef.guid . vmKey
 
 lookup :: Monad m => VersionMap -> Change.Key -> Transaction t m (Maybe Change.Value)
 lookup vm = Transaction.lookupBS . makeKey vm

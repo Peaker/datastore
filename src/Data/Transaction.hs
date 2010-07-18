@@ -26,6 +26,7 @@ import Data.Binary.Utils(encodeS, decodeS)
 import Data.IRef(IRef)
 import qualified Data.IRef as IRef
 import qualified Data.Guid as Guid
+import Data.Guid(Guid)
 import qualified Data.Property as Property
 import Data.Monoid(mempty)
 import Data.ByteString(ByteString)
@@ -34,15 +35,15 @@ import Data.Map(Map)
 
 type Property t m = Property.Property (Transaction t m)
 
-type Key = ByteString
+type Key = Guid
 type Value = Maybe ByteString -- Nothing means delete, Just means insert/modify
 type Changes = Map Key Value
 
 -- 't' is a phantom-type tag meant to make sure you run Transactions
 -- with the right store
 data Store t m = Store {
-  storeLookup :: ByteString -> m (Maybe ByteString),
-  storeTransaction :: [(ByteString, Maybe ByteString)] -> m ()
+  storeLookup :: Key -> m Value,
+  storeTransaction :: [(Key, Value)] -> m ()
   }
 
 -- Define transformer stack:
@@ -61,7 +62,7 @@ liftInner = Transaction . lift . lift
 -- instance MonadTrans (Transaction t m) where
 --   lift = liftInner
 
-lookupBS :: Monad m => ByteString -> Transaction t m (Maybe ByteString)
+lookupBS :: Monad m => Key -> Transaction t m Value
 lookupBS bs = do
   changes <- liftStateT get
   case Map.lookup bs changes of
@@ -70,24 +71,24 @@ lookupBS bs = do
       liftInner $ storeLookup store bs
     Just res -> return res
 
-insertBS :: Monad m => ByteString -> ByteString -> Transaction t m ()
+insertBS :: Monad m => Key -> ByteString -> Transaction t m ()
 insertBS key = liftStateT . modify . Map.insert key . Just
 
-deleteBS :: Monad m => ByteString -> Transaction t m ()
+deleteBS :: Monad m => Key -> Transaction t m ()
 deleteBS key = liftStateT . modify . Map.insert key $ Nothing
 
-delete :: Monad m => ByteString -> Transaction t m ()
+delete :: Monad m => Key -> Transaction t m ()
 delete = deleteBS
 
-lookup :: (Monad m, Binary a) => ByteString -> Transaction t m (Maybe a)
+lookup :: (Monad m, Binary a) => Key -> Transaction t m (Maybe a)
 lookup = (liftM . liftM) decodeS . lookupBS
 
-insert :: (Monad m, Binary a) => ByteString -> a -> Transaction t m ()
+insert :: (Monad m, Binary a) => Key -> a -> Transaction t m ()
 insert key = insertBS key . encodeS
 
 readIRefDef :: (Monad m, Binary a) => Transaction t m a -> IRef a -> Transaction t m a
 readIRefDef def iref =
-  maybe writeDefaultRet (return . decodeS) =<< lookupBS (IRef.bs iref)
+  maybe writeDefaultRet (return . decodeS) =<< lookupBS (IRef.guid iref)
   where
     writeDefaultRet = do
       d <- def
@@ -96,12 +97,12 @@ readIRefDef def iref =
 
 readIRef :: (Monad m, Binary a) => IRef a -> Transaction t m a
 readIRef iref =
-  liftM decodeS $ unJust =<< lookupBS (IRef.bs iref)
+  liftM decodeS $ unJust =<< lookupBS (IRef.guid iref)
   where
     unJust = maybe (fail $ show iref ++ " to inexistent object dereferenced") return
 
 writeIRef :: (Monad m, Binary a) => IRef a -> a -> Transaction t m ()
-writeIRef iref = insert (IRef.bs iref)
+writeIRef iref = insert (IRef.guid iref)
 
 fromIRef :: (Monad m, Binary a) => IRef a -> Property t m a
 fromIRef iref = Property.Property (readIRef iref) (writeIRef iref)
@@ -112,7 +113,7 @@ fromIRefDef def iref = Property.Property (readIRefDef def iref) (writeIRef iref)
 newIRef :: (MonadIO m, Binary a) => a -> Transaction t m (IRef a)
 newIRef val = do
   newGuid <- liftInner . liftIO $ Guid.new
-  insert (Guid.bs newGuid) val
+  insert newGuid val
   return (IRef.unsafeFromGuid newGuid)
 
 followBy :: (Monad m, Binary a) =>
