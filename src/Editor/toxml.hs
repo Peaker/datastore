@@ -19,7 +19,7 @@ import qualified Data.Record.Label as Label
 writeTreeXml :: MonadIO m => Handle -> Int -> IRef Data.TreeD -> Transaction ViewTag m ()
 writeTreeXml outFile depth iref = do
   let ref = Transaction.fromIRef iref
-  value <- Property.get =<< Transaction.follow (Data.nodeValueRef `Property.composeLabel` ref)
+  value <- Property.get $ Data.nodeValue `Property.composeLabel` ref
   childrenIRefs <- Property.get (Data.nodeChildrenRefs `Property.composeLabel` ref)
   let text = TextEdit.textEditText . Label.get Data.textEditModel $ value
       indent = (replicate (2 * depth) ' ' ++)

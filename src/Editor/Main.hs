@@ -151,7 +151,7 @@ makeTreeEdit :: MonadIO m =>
                 IRef TreeD ->
                 Transaction ViewTag m (Widget (Transaction ViewTag m ()))
 makeTreeEdit clipboardRef treeIRef = do
-  valueRef <- Transaction.follow $ Data.nodeValueRef `composeLabel` treeRef
+  let valueRef = Data.nodeValue `composeLabel` treeRef
   makeTreeEdit'
     (Data.textEditModel `composeLabel` valueRef)
     (Data.innerGridModel `composeLabel` valueRef)

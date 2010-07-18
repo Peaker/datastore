@@ -5,9 +5,9 @@ module Editor.Data(
     outerGridModel, treeNodeGridModel,
     innerGridModel, textEditModel,
     isExpanded,
-    Tree(..), nodeValueRef, nodeChildrenRefs,
+    Tree(..), nodeValue, nodeChildrenRefs,
     ITree, ITreeD, TreeD,
-    makeValueRef, makeNodeRef, makeLeafRef)
+    makeValue, makeNodeRef, makeLeafRef)
 where
 
 import Control.Monad.IO.Class(MonadIO)
@@ -15,7 +15,7 @@ import Control.Monad(ap)
 import Data.Binary(Binary(..))
 import Data.Vector.Vector2(Vector2(..))
 import Data.IRef(IRef)
-import Data.IRef.Tree(Tree(..), nodeValueRef, nodeChildrenRefs)
+import Data.IRef.Tree(Tree(..), nodeValue, nodeChildrenRefs)
 import Data.Transaction(Transaction)
 import qualified Data.Transaction as Transaction
 import Data.Record.Label((:->), mkLabels, label)
@@ -45,9 +45,8 @@ type TreeD = Tree Data
 
 type ITree a = IRef (Tree a)
 
-makeValueRef :: MonadIO m => String -> Transaction t m (IRef Data)
-makeValueRef text =
-  Transaction.newIRef
+makeValue :: String -> Data
+makeValue text =
   Data {
     _outerGridModel = Grid.initModel,
     _treeNodeGridModel = Grid.Model (Vector2 2 0),
@@ -57,9 +56,7 @@ makeValueRef text =
     }
 
 makeNodeRef :: MonadIO m => String -> [ITreeD] -> Transaction t m ITreeD
-makeNodeRef text childrenRefs = do
-  ref <- makeValueRef text
-  Transaction.newIRef $ Node ref childrenRefs
+makeNodeRef text childrenRefs = Transaction.newIRef $ Node (makeValue text) childrenRefs
 
 makeLeafRef :: MonadIO m => String -> Transaction t m ITreeD
 makeLeafRef text = makeNodeRef text []
