@@ -1,9 +1,10 @@
 {-# OPTIONS -O2 -Wall #-}
 
 module Data.Guid
-    (Guid(..), guidLength, new, xor)
+    (Guid(..), length, new, xor)
 where
 
+import Prelude hiding (length)
 import qualified Data.ByteString as SBS
 import Data.ByteString.Utils(randomBS, xorBS)
 import Data.Binary(Binary(..))
@@ -19,14 +20,14 @@ inGuid2 :: (SBS.ByteString -> SBS.ByteString -> SBS.ByteString) ->
 inGuid2 f = inGuid . f . bs
 
 instance Binary Guid where
-  get = Guid `fmap` getByteString guidLength
+  get = Guid `fmap` getByteString length
   put = putByteString . bs
 
-guidLength :: Int
-guidLength = 16
+length :: Int
+length = 16
 
 new :: IO Guid
-new = Guid `fmap` randomBS guidLength
+new = Guid `fmap` randomBS length
 
 xor :: Guid -> Guid -> Guid
 xor = inGuid2 xorBS
