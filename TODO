@@ -1,10 +1,7 @@
-* Cut/Paste broken -- need strongerKeys for that, not weaker
+* Make an anchor of (Typeable?) GUI state by name so I don't have to
+  add Anchors
 
 --- XML UI ----------------------------------
-
-* Collapsing
-  * extra Bool in each tree value (Collapsed)
-    * Don't recurse on children if collapsed
 
 * Attributes, text leaf GUI widgets
 

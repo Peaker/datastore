@@ -145,6 +145,18 @@ makeChildGrid clipboardRef childrenGridModelRef childrenIRefsRef = do
       | 0 <= index && index < count = Just index
       | otherwise = Nothing
 
+focusableTextView :: String -> Widget a
+focusableTextView =
+  Widget.takesFocus .
+  (Widget.atDisplay . Align.to . pure $ 0) .
+  Widget.whenFocused modifyMkImage .
+  Widget.simpleDisplay .
+  TextView.make Vty.def_attr
+  where
+    modifyMkImage mkImage size =
+      mkImage size `mappend`
+      TermImage.rect (Rect (pure 0) size) (first (`Vty.with_back_color` Vty.blue))
+
 makeTreeEdit :: Monad m =>
                 Transaction.Property ViewTag m [ITreeD] ->
                 IRef TreeD ->
@@ -198,16 +210,11 @@ makeTreeEdit clipboardRef treeIRef = do
         collapse = Property.set isExpandedRef False
         expand = Property.set isExpandedRef True
         collapser isExpanded =
-          (Widget.atDisplay . Align.to $ Vector2 0 0) .
-          Widget.whenFocused modifyMkImage .
           Widget.simpleDisplay .
           TextView.make Vty.def_attr $
           if isExpanded
           then "[-]"
           else "[+]"
-        modifyMkImage mkImage size =
-          mkImage size `mappend`
-          TermImage.rect (Rect (pure 0) size) (first (`Vty.with_back_color` Vty.blue))
         pasteKeymap [] = mempty
         pasteKeymap (cbChildRef:xs) =
           Keymap.simpleton "Paste" Config.pasteKey $ do
@@ -233,17 +240,24 @@ makeEditWidget clipboardRef = do
   rootIRef <- Property.get rootIRefRef
   focalPointIRef <- Property.get focalPointIRefRef
   -- TODO: Replace this with some fake root that you can actionKey on
-  Widget.strongerKeys (goRootKeymap rootIRef focalPointIRef) `liftM`
-    makeTreeEdit clipboardRef focalPointIRef
+  treeEdit <- makeTreeEdit clipboardRef focalPointIRef
+  widget <-
+    if rootIRef /= focalPointIRef
+    then makeGrid [[goUp rootIRef], [treeEdit]] Anchors.goRootGrid
+    else return treeEdit
+  return .
+    Widget.strongerKeys (goRootKeymap rootIRef focalPointIRef) $
+    widget
   where
+    goUp rootIRef = Widget.strongerKeys (goUpKeymap rootIRef) $ focusableTextView "[go up]"
+    goUpKeymap rootIRef = Keymap.simpleton "Go to root" Config.actionKey $ goRoot rootIRef
     focalPointIRefRef = Anchors.focalPointIRef
     rootIRefRef = Anchors.rootIRef
     goRootKeymap rootIRef focalPointIRef =
       if rootIRef == focalPointIRef
       then mempty
-      else Keymap.simpleton "Go to root" Config.rootKey .
-           Property.set focalPointIRefRef $
-           rootIRef
+      else Keymap.simpleton "Go to root" Config.rootKey $ goRoot rootIRef
+    goRoot rootIRef = Property.set focalPointIRefRef rootIRef
 
 -- Take a widget parameterized on transaction on views (that lives in
 -- a nested transaction monad) and convert it to one parameterized on

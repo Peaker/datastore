@@ -3,7 +3,7 @@
 module Editor.Anchors(
     clipboardIRef, rootIRef,
     focalPointIRef, branches,
-    branchSelector, versionMap, mainGrid,
+    branchSelector, versionMap, mainGrid, goRootGrid,
     dbStore, DBTag,
     viewStore, ViewTag)
 where
@@ -35,6 +35,11 @@ data ViewTag
 viewStore :: Monad m => View -> Store ViewTag (Transaction DBTag m)
 viewStore = View.store
 
+gridAnchor :: Monad m => String -> Transaction.Property anyTag m Grid.Model
+gridAnchor name = Transaction.anchorRefDef name $ return Grid.initModel
+
+
+
 clipboardIRef :: Monad m => Transaction.Property ViewTag m (IRef [ITreeD])
 clipboardIRef = Transaction.anchorRefDef "clipboard" $ Transaction.newIRef []
 
@@ -46,6 +51,9 @@ rootIRef = Transaction.anchorRefDef "root" $
 focalPointIRef :: Monad m => Transaction.Property ViewTag m ITreeD
 focalPointIRef = Transaction.anchorRefDef "focalPoint" $ Property.get rootIRef
 
+goRootGrid :: Monad m => Transaction.Property ViewTag m Grid.Model
+goRootGrid = gridAnchor "GUI.goRootGrid"
+
 branches :: Monad m => Transaction.Property DBTag m [(IRef TextEdit.Model, Branch)]
 branches = Transaction.anchorRefDef "branches" $ do
   masterNameIRef <- Transaction.newIRef $ TextEdit.initModel "master"
@@ -54,11 +62,11 @@ branches = Transaction.anchorRefDef "branches" $ do
   return [(masterNameIRef, master)]
 
 branchSelector :: Monad m => Transaction.Property DBTag m Grid.Model
-branchSelector = Transaction.anchorRefDef "branchSelector" $ return Grid.initModel
+branchSelector = gridAnchor "GUI.branchSel"
 
 versionMap :: Monad m => Transaction.Property DBTag m VersionMap
 versionMap = Transaction.anchorRefDef "HEAD" $
   VersionMap.new =<< Branch.curVersionIRef =<< (snd . head) `liftM` Property.get branches
 
 mainGrid :: Monad m => Transaction.Property DBTag m Grid.Model
-mainGrid = Transaction.anchorRefDef "GUI.mainGrid" $ return Grid.initModel
+mainGrid = gridAnchor "GUI.mainGrid"
