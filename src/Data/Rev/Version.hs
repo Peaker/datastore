@@ -5,8 +5,9 @@ module Data.Rev.Version
      walkUp, walkDown, versionsBetween)
 where
 
-import Control.Monad(liftM, liftM3)
+import Control.Monad(liftM)
 import Data.Binary(Binary(..))
+import Data.Binary.Utils(get3, put3)
 import Data.IRef(IRef)
 import Data.Transaction(Transaction)
 import qualified Data.Transaction as Transaction
@@ -19,8 +20,8 @@ data Version = Version {
   }
   deriving (Eq, Ord, Read, Show)
 instance Binary Version where
-  get = liftM3 Version get get get
-  put (Version d p c) = put d >> put p >> put c
+  get = get3 Version
+  put (Version a b c) = put3 a b c
 
 makeInitialVersion :: Monad m => Transaction t m (IRef Version)
 makeInitialVersion = Transaction.newIRef $ Version 0 Nothing []

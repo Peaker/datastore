@@ -1,12 +1,13 @@
 {-# OPTIONS -O2 -Wall #-}
 
 module Data.Guid
-    (Guid, make, bs, length, new, xor)
+    (Guid, make, bs, length, new, xor, fromString)
 where
 
 import Prelude hiding (length)
 import qualified Data.ByteString as SBS
 import Data.Monoid(mappend)
+import qualified Data.ByteString.UTF8 as UTF8
 import Data.ByteString.Utils(randomBS, xorBS)
 import Data.Binary(Binary(..))
 import Data.Binary.Get(getByteString)
@@ -30,6 +31,10 @@ make bytes
   | otherwise  = Guid bytes
   where
     l = SBS.length bytes
+
+-- | Use only strings shorter than Guid.length
+fromString :: String -> Guid
+fromString = make . UTF8.fromString
 
 instance Binary Guid where
   get = Guid `fmap` getByteString length

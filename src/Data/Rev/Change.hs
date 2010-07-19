@@ -6,9 +6,9 @@ module Data.Rev.Change
      Dir, objectKey, oldValue, newValue)
 where
 
-import Control.Monad(liftM3)
 import Data.ByteString(ByteString)
 import Data.Binary(Binary(..))
+import Data.Binary.Utils(get3, put3)
 import Data.Record.Label((:->), mkLabels, label)
 import Data.Guid(Guid)
 
@@ -28,8 +28,8 @@ type Dir = Change :-> Maybe Value
 oldValue :: Dir
 newValue :: Dir
 instance Binary Change where
-  get = liftM3 Change get get get
-  put (Change key old new) = put key >> put old >> put new
+  get = get3 Change
+  put (Change key old new) = put3 key old new
 
 make :: Key -> Maybe Value -> Maybe Value -> Change
 make = Change

@@ -162,21 +162,18 @@ makeTreeEdit :: Monad m =>
                 IRef TreeD ->
                 Transaction ViewTag m (Widget (Transaction ViewTag m ()))
 makeTreeEdit clipboardRef treeIRef = do
-  let valueRef = Data.nodeValue `composeLabel` treeRef
+  gridModelsContainer <- flip Data.gridModel `liftM` Property.get valueRef
   makeTreeEdit'
     (Data.textEditModel `composeLabel` valueRef)
-    (Data.innerGridModel `composeLabel` valueRef)
-    (Data.treeNodeGridModel `composeLabel` valueRef)
-    (Data.outerGridModel `composeLabel` valueRef)
+    gridModelsContainer
     (Data.nodeChildrenRefs `composeLabel` treeRef)
     (Data.isExpanded `composeLabel` valueRef)
   where
+    valueRef = Data.nodeValue `composeLabel` treeRef
     treeRef = Transaction.fromIRef treeIRef
     makeTreeEdit'
       valueTextEditModelRef
-      childrenGridModelRef
-      treeNodeGridModelRef
-      outerGridModelRef
+      gridModelsContainer
       childrenIRefsRef
       isExpandedRef
       = do
@@ -203,6 +200,9 @@ makeTreeEdit clipboardRef treeIRef = do
                 ]
         return . Widget.weakerKeys keymap $ outerGrid
       where
+        outerGridModelRef = gridModelsContainer Grid.initModel "outer"
+        treeNodeGridModelRef = gridModelsContainer (Grid.Model $ Vector2 2 0) "treeNode"
+        childrenGridModelRef = gridModelsContainer Grid.initModel "children"
         expandCollapseKeymap isExpanded =
           if isExpanded
           then Keymap.simpleton "Collapse" Config.collapseKey collapse
@@ -226,7 +226,6 @@ makeTreeEdit clipboardRef treeIRef = do
           Keymap.simpleton "Set focal point" Config.setFocalPointKey $
             Property.set Anchors.focalPointIRef treeIRef
         appendNewChild = do
-          -- TODO: Transaction here
           newRef <- Data.makeLeafRef "NEW_NODE"
           appendChild newRef
         appendChild newRef = do
@@ -239,7 +238,6 @@ makeEditWidget :: Monad m =>
 makeEditWidget clipboardRef = do
   rootIRef <- Property.get rootIRefRef
   focalPointIRef <- Property.get focalPointIRefRef
-  -- TODO: Replace this with some fake root that you can actionKey on
   treeEdit <- makeTreeEdit clipboardRef focalPointIRef
   widget <-
     if rootIRef /= focalPointIRef
@@ -257,7 +255,7 @@ makeEditWidget clipboardRef = do
       if rootIRef == focalPointIRef
       then mempty
       else Keymap.simpleton "Go to root" Config.rootKey $ goRoot rootIRef
-    goRoot rootIRef = Property.set focalPointIRefRef rootIRef
+    goRoot = Property.set focalPointIRefRef
 
 -- Take a widget parameterized on transaction on views (that lives in
 -- a nested transaction monad) and convert it to one parameterized on
@@ -280,7 +278,7 @@ makeWidgetForView :: Monad m => View -> Transaction DBTag m (Widget (Transaction
 makeWidgetForView view = do
   version <- View.curVersion view
   widget <- widgetDownTransaction (Anchors.viewStore view) $ do
-              clipboardP <- Transaction.follow Anchors.clipboardIRef
+              clipboardP <- Transaction.followBy id Anchors.clipboardIRef
               makeEditWidget clipboardP
   return $ Widget.strongerKeys (keymaps version) widget
   where

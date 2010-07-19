@@ -1,3 +1,5 @@
+* When deleting only child move up
+
 --- XML UI ----------------------------------
 
 * Attributes, text leaf GUI widgets
@@ -29,6 +31,10 @@
 
   * Revision control (Data.Rev.Change and Data.Rev.VersionMap) can use
     pure IRefs for object values
+
+--- GC ------------------------
+
+* Container ought to always be enumerable so that GC is possible
 
 --- Code editor -----------------------------
 

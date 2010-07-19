@@ -1,18 +1,15 @@
 {-# OPTIONS -O2 -Wall #-}
 {-# LANGUAGE TemplateHaskell, TypeOperators #-}
 module Editor.Data(
-    Data,
-    outerGridModel, treeNodeGridModel,
-    innerGridModel, textEditModel,
-    isExpanded,
+    Data, gridModels, textEditModel, isExpanded,
+    gridModel,
     Tree(..), nodeValue, nodeChildrenRefs,
     ITree, ITreeD, TreeD,
     makeValue, makeNodeRef, makeLeafRef)
 where
 
-import Control.Monad(ap)
 import Data.Binary(Binary(..))
-import Data.Vector.Vector2(Vector2(..))
+import Data.Binary.Utils(get3, put3)
 import Data.IRef(IRef)
 import Data.IRef.Tree(Tree(..), nodeValue, nodeChildrenRefs)
 import Data.Transaction(Transaction)
@@ -22,40 +19,41 @@ import qualified Graphics.UI.VtyWidgets.Grid as Grid
 import qualified Graphics.UI.VtyWidgets.TextEdit as TextEdit
 
 data Data = Data {
-  _outerGridModel :: Grid.Model,
-  _treeNodeGridModel :: Grid.Model,
-  _innerGridModel :: Grid.Model,
+  _gridModels :: Transaction.ContainerRef Grid.Model,
   _textEditModel :: TextEdit.Model,
   _isExpanded :: Bool
   }
 $(mkLabels [''Data])
-outerGridModel :: Data :-> Grid.Model
-treeNodeGridModel :: Data :-> Grid.Model
-innerGridModel :: Data :-> Grid.Model
+gridModels :: Data :-> Transaction.ContainerRef Grid.Model
 textEditModel :: Data :-> TextEdit.Model
 isExpanded :: Data :-> Bool
 
+gridModel :: Monad m => Grid.Model -> Data -> Transaction.Container String t m Grid.Model
+gridModel defModel = Transaction.containerStr .
+                     Transaction.fromContainerRefDef (return defModel) .
+                     _gridModels
+
 instance Binary Data where
-  get = return Data `ap` get `ap` get `ap` get `ap` get `ap` get
-  put (Data a b c d e) = put a >> put b >> put c >> put d >> put e
+  get = get3 Data
+  put (Data a b c) = put3 a b c
 
 type ITreeD = ITree Data
 type TreeD = Tree Data
 
 type ITree a = IRef (Tree a)
 
-makeValue :: String -> Data
-makeValue text =
-  Data {
-    _outerGridModel = Grid.initModel,
-    _treeNodeGridModel = Grid.Model (Vector2 2 0),
-    _innerGridModel = Grid.initModel,
-    _textEditModel = TextEdit.initModel text,
-    _isExpanded = True
+makeValue :: Monad m => String -> Transaction t m Data
+makeValue text = do
+  gridModelsGuid <- Transaction.newContainerRef
+  return
+    Data {
+      _gridModels = gridModelsGuid,
+      _textEditModel = TextEdit.initModel text,
+      _isExpanded = True
     }
 
 makeNodeRef :: Monad m => String -> [ITreeD] -> Transaction t m ITreeD
-makeNodeRef text childrenRefs = Transaction.newIRef $ Node (makeValue text) childrenRefs
+makeNodeRef text childrenRefs = Transaction.newIRef . flip Node childrenRefs =<< makeValue text
 
 makeLeafRef :: Monad m => String -> Transaction t m ITreeD
 makeLeafRef text = makeNodeRef text []

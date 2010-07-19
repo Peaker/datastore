@@ -6,7 +6,6 @@ module Data.IRef
 where
 
 import Data.Binary(Binary)
-import Data.ByteString.UTF8(fromString)
 import Data.Guid(Guid)
 import qualified Data.Guid as Guid
 
@@ -20,4 +19,4 @@ unsafeFromGuid :: Guid -> IRef a
 unsafeFromGuid = IRef
 
 anchorIRef :: (Binary a) => String -> IRef a
-anchorIRef = unsafeFromGuid . Guid.make . fromString
+anchorIRef = unsafeFromGuid . Guid.fromString

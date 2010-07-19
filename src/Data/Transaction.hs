@@ -9,11 +9,12 @@ module Data.Transaction
      deleteBS, delete,
      readIRef, readIRefDef,
      writeIRef,
-     newIRef, newKey,
+     newIRef, newContainerRef, newKey,
      fromIRef, fromIRefDef,
-     container, containerDef, containerStr,
-     followBy, follow,
+     followBy,
      anchorRef, anchorRefDef,
+     Container, ContainerRef, containerGuidBase, containerStr,
+     fromContainerRef, fromContainerRefDef,
      anchorContainer, anchorContainerDef)
 where
 
@@ -37,6 +38,9 @@ import qualified Data.Map as Map
 import Data.Map(Map)
 
 type Property t m = Property.Property (Transaction t m)
+type Container k t m a = k -> Property t m a
+newtype ContainerRef a = ContainerRef { containerGuidBase :: Guid }
+  deriving (Eq, Ord, Binary, Read, Show)
 
 type Key = Guid
 type Value = Maybe ByteString -- Nothing means delete, Just means insert/modify
@@ -120,15 +124,15 @@ fromIRef iref = Property.Property (readIRef iref) (writeIRef iref)
 fromIRefDef :: (Monad m, Binary a) => Transaction t m a -> IRef a -> Property t m a
 fromIRefDef def iref = Property.Property (readIRefDef def iref) (writeIRef iref)
 
-container :: (Monad m, Binary a) => IRef a -> Guid -> Property t m a
-container iref guid = Property.Property (readGuid cGuid) (writeGuid cGuid)
+fromContainerRef :: (Monad m, Binary a) => ContainerRef a -> Container Guid t m a
+fromContainerRef containerRef guid = Property.Property (readGuid key) (writeGuid key)
   where
-    cGuid = IRef.guid iref `Guid.xor` guid
+    key = containerGuidBase containerRef `Guid.xor` guid
 
-containerDef :: (Monad m, Binary a) => Transaction t m a -> IRef a -> Guid -> Property t m a
-containerDef def iref guid = Property.Property (readGuidDef def cGuid) (writeGuid cGuid)
+fromContainerRefDef :: (Monad m, Binary a) => Transaction t m a -> ContainerRef a -> Container Guid t m a
+fromContainerRefDef def containerRef guid = Property.Property (readGuidDef def key) (writeGuid key)
   where
-    cGuid = IRef.guid iref `Guid.xor` guid
+    key = containerGuidBase containerRef `Guid.xor` guid
 
 newKey :: Monad m => Transaction t m Key
 newKey = liftInner . storeNewKey =<< liftReaderT ask
@@ -139,18 +143,16 @@ newIRef val = do
   insert newGuid val
   return (IRef.unsafeFromGuid newGuid)
 
+newContainerRef :: (Monad m, Binary a) => Transaction t m (ContainerRef a)
+newContainerRef = ContainerRef `liftM` newKey
+
+-- Dereference the *current* value of the IRef (Will not track new
+-- values of IRef, by-value and not by-name)
 followBy :: (Monad m, Binary a) =>
             (b -> IRef a) ->
             Property t m b ->
             Transaction t m (Property t m a)
 followBy conv = liftM (fromIRef . conv) . Property.get
-
--- Dereference the *current* value of the IRef (Will not track new
--- values of IRef, by-value and not by-name)
-follow :: (Monad m, Binary a) =>
-          Property t m (IRef a) ->
-          Transaction t m (Property t m a)
-follow = followBy id
 
 anchorRef :: (Monad m, Binary a) => String -> Property t m a
 anchorRef = fromIRef . IRef.anchorIRef
@@ -158,13 +160,15 @@ anchorRef = fromIRef . IRef.anchorIRef
 anchorRefDef :: (Monad m, Binary a) => String -> Transaction t m a -> Property t m a
 anchorRefDef name def = fromIRefDef def . IRef.anchorIRef $ name
 
-anchorContainer :: (Monad m, Binary a) => String -> Guid -> Property t m a
-anchorContainer = container . IRef.anchorIRef
+anchorContainer :: (Monad m, Binary a) => String -> Container Guid t m a
+anchorContainer = fromContainerRef . ContainerRef . Guid.fromString
 
-anchorContainerDef :: (Monad m, Binary a) => String -> Transaction t m a -> Guid -> Property t m a
-anchorContainerDef name def = containerDef def . IRef.anchorIRef $ name
+anchorContainerDef :: (Monad m, Binary a) => String -> Transaction t m a -> Container Guid t m a
+anchorContainerDef name def = fromContainerRefDef def . ContainerRef . Guid.fromString $ name
 
-containerStr :: (Monad m, Binary a) => (Guid -> Property t m a) -> String -> Property t m a
+containerStr :: (Monad m, Binary a) =>
+                Container Guid t m a ->
+                Container String t m a
 containerStr c = c . Guid.make . fromString
 
 run :: Monad m => Store t m -> Transaction t m a -> m a
