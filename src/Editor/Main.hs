@@ -115,9 +115,10 @@ makeChoiceWidget keys gridModelRef = do
 makeChildGrid :: Monad m =>
                  Transaction.Property ViewTag m [ITreeD] ->
                  Transaction.Property ViewTag m Grid.Model ->
+                 Transaction.Property ViewTag m Grid.Model ->
                  Transaction.Property ViewTag m [ITreeD] ->
                  Transaction ViewTag m (Widget (Transaction ViewTag m ()))
-makeChildGrid clipboardRef childrenGridModelRef childrenIRefsRef = do
+makeChildGrid clipboardRef outerGridModelRef childrenGridModelRef childrenIRefsRef = do
   childItems <- mapM (makeTreeEdit clipboardRef) =<< Property.get childrenIRefsRef
   curChildIndex <- getChildIndex . length $ childItems
   childGrid <- makeGrid (map (: []) childItems) childrenGridModelRef
@@ -137,8 +138,10 @@ makeChildGrid clipboardRef childrenGridModelRef childrenIRefsRef = do
       childrenIRefs <- Property.get childrenIRefsRef
       Property.pureModify clipboardRef (childrenIRefs !! index :)
       delChild index
-    delChild index =
+    delChild index = do
       Property.pureModify childrenIRefsRef $ removeAt index
+      isEmpty <- null `liftM` Property.get childrenIRefsRef
+      when isEmpty . Property.set outerGridModelRef $ yGridCursor 0
     getChildIndex count = (validateIndex count . Vector2.snd . Grid.modelCursor) `liftM`
                           Property.get childrenGridModelRef
     validateIndex count index
@@ -184,7 +187,7 @@ makeTreeEdit clipboardRef treeIRef = do
         isExpanded <- Property.get isExpandedRef
         lowRow <- if isExpanded
                   then ((:[]) . (:[])) `liftM`
-                       makeChildGrid clipboardRef childrenGridModelRef childrenIRefsRef
+                       makeChildGrid clipboardRef outerGridModelRef childrenGridModelRef childrenIRefsRef
                   else return []
         cValueEdit <- makeGrid [[collapser isExpanded,
                                  Widget.simpleDisplay $ widthSpace 1,
@@ -221,13 +224,11 @@ makeTreeEdit clipboardRef treeIRef = do
             appendChild cbChildRef
             Property.set clipboardRef xs
         appendNewNodeKeymap = Keymap.simpleton "Append new child node"
-                              Config.appendChildKey appendNewChild
+                              Config.appendChildKey $ appendChild =<< Data.makeLeafRef ""
         setRootKeymap =
           Keymap.simpleton "Set focal point" Config.setFocalPointKey $
             Property.set Anchors.focalPointIRef treeIRef
-        appendNewChild = do
-          newRef <- Data.makeLeafRef "NEW_NODE"
-          appendChild newRef
+
         appendChild newRef = do
           appendGridChild childrenGridModelRef childrenIRefsRef newRef
           Property.set outerGridModelRef $ yGridCursor 1
