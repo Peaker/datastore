@@ -122,7 +122,7 @@ makeChildGrid clipboardRef childrenGridModelRef childrenIRefsRef = do
   curChildIndex <- getChildIndex . length $ childItems
   childGrid <- makeGrid (map (: []) childItems) childrenGridModelRef
   return .
-    Widget.strongerKeys
+    Widget.weakerKeys
     (mappend
      delNodeKeymap cutNodeKeymap
      curChildIndex) .
@@ -232,6 +232,7 @@ makeEditWidget :: Monad m =>
 makeEditWidget clipboardRef = do
   rootIRef <- Property.get rootIRefRef
   focalPointIRef <- Property.get focalPointIRefRef
+  -- TODO: Replace this with some fake root that you can actionKey on
   Widget.strongerKeys (goRootKeymap rootIRef focalPointIRef) `liftM`
     makeTreeEdit clipboardRef focalPointIRef
   where
