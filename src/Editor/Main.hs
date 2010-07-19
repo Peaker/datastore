@@ -6,7 +6,6 @@ module Main(main) where
 import Prelude hiding ((.))
 import Control.Arrow(first)
 import Control.Applicative(pure)
-import Control.Monad.IO.Class(MonadIO)
 import Control.Category((.))
 import Control.Monad(when, liftM)
 import Data.List.Utils(safeIndex)
@@ -113,7 +112,7 @@ makeChoiceWidget keys gridModelRef = do
     widgets = map fst keys
     items = map snd keys
 
-makeChildGrid :: MonadIO m =>
+makeChildGrid :: Monad m =>
                  Transaction.Property ViewTag m [ITreeD] ->
                  Transaction.Property ViewTag m Grid.Model ->
                  Transaction.Property ViewTag m [ITreeD] ->
@@ -146,7 +145,7 @@ makeChildGrid clipboardRef childrenGridModelRef childrenIRefsRef = do
       | 0 <= index && index < count = Just index
       | otherwise = Nothing
 
-makeTreeEdit :: MonadIO m =>
+makeTreeEdit :: Monad m =>
                 Transaction.Property ViewTag m [ITreeD] ->
                 IRef TreeD ->
                 Transaction ViewTag m (Widget (Transaction ViewTag m ()))
@@ -227,7 +226,7 @@ makeTreeEdit clipboardRef treeIRef = do
           appendGridChild childrenGridModelRef childrenIRefsRef newRef
           Property.set outerGridModelRef $ yGridCursor 1
 
-makeEditWidget :: MonadIO m =>
+makeEditWidget :: Monad m =>
                   Transaction.Property ViewTag m [ITreeD] ->
                   Transaction ViewTag m (Widget (Transaction ViewTag m ()))
 makeEditWidget clipboardRef = do
@@ -249,7 +248,7 @@ makeEditWidget clipboardRef = do
 -- a nested transaction monad) and convert it to one parameterized on
 -- the nested transaction
 type MWidget m = m (Widget (m ()))
-widgetDownTransaction :: MonadIO m =>
+widgetDownTransaction :: Monad m =>
                          Store t m ->
                          MWidget (Transaction t m) ->
                          MWidget m
@@ -259,7 +258,7 @@ widgetDownTransaction store = runTrans . (liftM . fmap) runTrans
 
 -- Apply the transactions to the given View and convert them to
 -- transactions on a DB
-makeWidgetForView :: MonadIO m => View -> Transaction DBTag m (Widget (Transaction DBTag m ()))
+makeWidgetForView :: Monad m => View -> Transaction DBTag m (Widget (Transaction DBTag m ()))
 makeWidgetForView view = do
   version <- View.curVersion view
   widget <- widgetDownTransaction (Anchors.viewStore view) $ do

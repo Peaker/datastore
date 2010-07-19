@@ -8,7 +8,6 @@ module Editor.Anchors(
     viewStore, ViewTag)
 where
 
-import Control.Monad.IO.Class(MonadIO)
 import Control.Monad(liftM)
 import Data.IRef(IRef)
 import qualified Data.Transaction as Transaction
@@ -33,21 +32,21 @@ dbStore :: Db -> Store DBTag IO
 dbStore = Db.store
 
 data ViewTag
-viewStore :: MonadIO m => View -> Store ViewTag (Transaction DBTag m)
+viewStore :: Monad m => View -> Store ViewTag (Transaction DBTag m)
 viewStore = View.store
 
-clipboardIRef :: MonadIO m => Transaction.Property ViewTag m (IRef [ITreeD])
+clipboardIRef :: Monad m => Transaction.Property ViewTag m (IRef [ITreeD])
 clipboardIRef = Transaction.anchorRefDef "clipboard" $ Transaction.newIRef []
 
-rootIRef :: MonadIO m => Transaction.Property ViewTag m ITreeD
+rootIRef :: Monad m => Transaction.Property ViewTag m ITreeD
 rootIRef = Transaction.anchorRefDef "root" $
            Data.makeNodeRef "tree root value" =<<
            mapM (Data.makeLeafRef . show) [1..10 :: Int]
 
-focalPointIRef :: MonadIO m => Transaction.Property ViewTag m ITreeD
+focalPointIRef :: Monad m => Transaction.Property ViewTag m ITreeD
 focalPointIRef = Transaction.anchorRefDef "focalPoint" $ Property.get rootIRef
 
-branches :: MonadIO m => Transaction.Property DBTag m [(IRef TextEdit.Model, Branch)]
+branches :: Monad m => Transaction.Property DBTag m [(IRef TextEdit.Model, Branch)]
 branches = Transaction.anchorRefDef "branches" $ do
   masterNameIRef <- Transaction.newIRef $ TextEdit.initModel "master"
   initialVersionIRef <- Version.makeInitialVersion
@@ -57,7 +56,7 @@ branches = Transaction.anchorRefDef "branches" $ do
 branchSelector :: Monad m => Transaction.Property DBTag m Grid.Model
 branchSelector = Transaction.anchorRefDef "branchSelector" $ return Grid.initModel
 
-versionMap :: MonadIO m => Transaction.Property DBTag m VersionMap
+versionMap :: Monad m => Transaction.Property DBTag m VersionMap
 versionMap = Transaction.anchorRefDef "HEAD" $
   VersionMap.new =<< Branch.curVersionIRef =<< (snd . head) `liftM` Property.get branches
 

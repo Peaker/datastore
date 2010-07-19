@@ -5,7 +5,6 @@ where
 
 import Prelude hiding (lookup)
 import Control.Monad(liftM)
-import Control.Monad.IO.Class(MonadIO)
 import Data.IRef(IRef)
 import Data.Transaction(Transaction, Store(..))
 import qualified Data.Transaction as Transaction
@@ -29,10 +28,10 @@ curVersionIRef view = Branch.curVersionIRef (branch view)
 curVersion :: Monad m => View -> Transaction t m Version
 curVersion view = Transaction.readIRef =<< curVersionIRef view
 
-move :: MonadIO m => View -> IRef Version -> Transaction t m ()
+move :: Monad m => View -> IRef Version -> Transaction t m ()
 move = Branch.move . branch
 
-newVersion :: MonadIO m => View -> [Change] -> Transaction t m ()
+newVersion :: Monad m => View -> [Change] -> Transaction t m ()
 newVersion view = Branch.newVersion (branch view)
 
 sync :: Monad m => View -> Transaction t m ()
@@ -47,7 +46,7 @@ lookup view objKey = do
   sync view
   unsafeLookupBS view objKey
 
-transaction :: MonadIO m => View -> [(Change.Key, Maybe Change.Value)] -> Transaction t m ()
+transaction :: Monad m => View -> [(Change.Key, Maybe Change.Value)] -> Transaction t m ()
 transaction _    [] = return ()
 transaction view changes = do
   sync view
@@ -57,8 +56,9 @@ transaction view changes = do
       flip (Change.make key) value `liftM` unsafeLookupBS view key
 
 -- You get a store tagged however you like...
-store :: MonadIO m => View -> Store t' (Transaction t m)
+store :: Monad m => View -> Store t' (Transaction t m)
 store view = Store {
+  storeNewKey = Transaction.newKey,
   storeLookup = lookup view,
   storeTransaction = transaction view
   }

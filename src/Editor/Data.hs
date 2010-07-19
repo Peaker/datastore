@@ -10,7 +10,6 @@ module Editor.Data(
     makeValue, makeNodeRef, makeLeafRef)
 where
 
-import Control.Monad.IO.Class(MonadIO)
 import Control.Monad(ap)
 import Data.Binary(Binary(..))
 import Data.Vector.Vector2(Vector2(..))
@@ -55,8 +54,8 @@ makeValue text =
     _isExpanded = True
     }
 
-makeNodeRef :: MonadIO m => String -> [ITreeD] -> Transaction t m ITreeD
+makeNodeRef :: Monad m => String -> [ITreeD] -> Transaction t m ITreeD
 makeNodeRef text childrenRefs = Transaction.newIRef $ Node (makeValue text) childrenRefs
 
-makeLeafRef :: MonadIO m => String -> Transaction t m ITreeD
+makeLeafRef :: Monad m => String -> Transaction t m ITreeD
 makeLeafRef text = makeNodeRef text []

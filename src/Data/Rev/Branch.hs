@@ -5,7 +5,6 @@ module Data.Rev.Branch
 where
 
 import Control.Monad(liftM)
-import Control.Monad.IO.Class(MonadIO)
 import qualified Data.Transaction as Transaction
 import Data.Transaction(Transaction)
 import Data.Binary(Binary)
@@ -23,7 +22,7 @@ newtype BranchData = BranchData {
 newtype Branch = Branch (IRef BranchData)
   deriving (Eq, Ord, Read, Show, Binary)
 
-new :: MonadIO m => IRef Version -> Transaction t m Branch
+new :: Monad m => IRef Version -> Transaction t m Branch
 new versionIRef = Branch `liftM`
                   Transaction.newIRef (BranchData versionIRef)
 
@@ -33,7 +32,7 @@ move (Branch dataIRef) dest = Transaction.writeIRef dataIRef (BranchData dest)
 curVersionIRef :: Monad m => Branch -> Transaction t m (IRef Version)
 curVersionIRef (Branch dataIRef) = brVersionIRef `liftM` Transaction.readIRef dataIRef
 
-newVersion :: MonadIO m => Branch -> [Change] -> Transaction t m ()
+newVersion :: Monad m => Branch -> [Change] -> Transaction t m ()
 newVersion branch changes = do
   versionIRef <- curVersionIRef branch
   move branch =<< Version.newVersion versionIRef changes

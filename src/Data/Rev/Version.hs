@@ -6,7 +6,6 @@ module Data.Rev.Version
 where
 
 import Control.Monad(liftM, liftM3)
-import Control.Monad.IO.Class(MonadIO)
 import Data.Binary(Binary(..))
 import Data.IRef(IRef)
 import Data.Transaction(Transaction)
@@ -23,10 +22,10 @@ instance Binary Version where
   get = liftM3 Version get get get
   put (Version d p c) = put d >> put p >> put c
 
-makeInitialVersion :: MonadIO m => Transaction t m (IRef Version)
+makeInitialVersion :: Monad m => Transaction t m (IRef Version)
 makeInitialVersion = Transaction.newIRef $ Version 0 Nothing []
 
-newVersion :: MonadIO m => IRef Version -> [Change] -> Transaction t m (IRef Version)
+newVersion :: Monad m => IRef Version -> [Change] -> Transaction t m (IRef Version)
 newVersion versionIRef newChanges = do
   parentDepth <- depth `liftM` Transaction.readIRef versionIRef
   Transaction.newIRef $ Version (parentDepth+1) (Just versionIRef) newChanges

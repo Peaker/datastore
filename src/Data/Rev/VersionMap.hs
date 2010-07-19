@@ -9,7 +9,6 @@ where
 -- | redundant to the lists of changes stored in the version graph.
 
 import Prelude hiding (lookup)
-import Control.Monad.IO.Class(MonadIO)
 import Control.Monad(liftM, (<=<))
 import qualified Data.Record.Label as Label
 import Data.Guid(Guid)
@@ -62,7 +61,7 @@ move vm destVersionIRef = do
     applyBackward = apply Change.oldValue
     apply changeDir version = applyChanges vm changeDir . Version.changes $ version
 
-new :: MonadIO m => IRef Version -> Transaction t m VersionMap
+new :: Monad m => IRef Version -> Transaction t m VersionMap
 new versionIRef = do
   vm <- VersionMap `liftM` Transaction.newIRef (VersionMapData versionIRef)
   applyHistory vm =<< Transaction.readIRef versionIRef

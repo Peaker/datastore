@@ -8,7 +8,8 @@ module Data.Transaction
      insertBS, insert,
      deleteBS, delete,
      readIRef, readIRefDef,
-     writeIRef, newIRef,
+     writeIRef,
+     newIRef, newKey,
      fromIRef, fromIRefDef,
      followBy, follow,
      anchorRef, anchorRefDef)
@@ -20,12 +21,10 @@ import Control.Monad(liftM)
 import Control.Monad.Trans.State.Strict(StateT, runStateT, get, modify)
 import Control.Monad.Trans.Reader(ReaderT, runReaderT, ask)
 import Control.Monad.Trans.Class(MonadTrans(..))
-import Control.Monad.IO.Class(MonadIO(..))
 import Data.Binary(Binary)
 import Data.Binary.Utils(encodeS, decodeS)
 import Data.IRef(IRef)
 import qualified Data.IRef as IRef
-import qualified Data.Guid as Guid
 import Data.Guid(Guid)
 import qualified Data.Property as Property
 import Data.Monoid(mempty)
@@ -42,6 +41,7 @@ type Changes = Map Key Value
 -- 't' is a phantom-type tag meant to make sure you run Transactions
 -- with the right store
 data Store t m = Store {
+  storeNewKey :: m Key,
   storeLookup :: Key -> m Value,
   storeTransaction :: [(Key, Value)] -> m ()
   }
@@ -49,9 +49,7 @@ data Store t m = Store {
 -- Define transformer stack:
 newtype Transaction t m a = Transaction {
   unTransaction :: ReaderT (Store t m) (StateT Changes m) a
-  -- TODO: To get rid of MonadIO I need to somehow remove dependency
-  -- on IO from newGuid/newIRef.
-  } deriving (Monad, Applicative, Functor, MonadIO)
+  } deriving (Monad, Applicative, Functor)
 liftReaderT :: ReaderT (Store t m) (StateT Changes m) a -> Transaction t m a
 liftReaderT = Transaction
 liftStateT :: Monad m => StateT Changes m a -> Transaction t m a
@@ -110,9 +108,12 @@ fromIRef iref = Property.Property (readIRef iref) (writeIRef iref)
 fromIRefDef :: (Monad m, Binary a) => Transaction t m a -> IRef a -> Property t m a
 fromIRefDef def iref = Property.Property (readIRefDef def iref) (writeIRef iref)
 
-newIRef :: (MonadIO m, Binary a) => a -> Transaction t m (IRef a)
+newKey :: Monad m => Transaction t m Key
+newKey = liftInner . storeNewKey =<< liftReaderT ask
+
+newIRef :: (Monad m, Binary a) => a -> Transaction t m (IRef a)
 newIRef val = do
-  newGuid <- liftInner . liftIO $ Guid.new
+  newGuid <- newKey
   insert newGuid val
   return (IRef.unsafeFromGuid newGuid)
 

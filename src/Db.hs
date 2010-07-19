@@ -70,6 +70,7 @@ transaction db changes = Berkeley.dbEnv_withTxn [] [] (dbEnv db) Nothing $ \txn 
 -- You get a Store tagged however you like...
 store :: Db -> Store t IO
 store db = Store {
+  storeNewKey = Guid.new,
   storeLookup = lookup db,
   storeTransaction = transaction db
   }
