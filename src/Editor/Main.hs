@@ -182,7 +182,7 @@ makeTreeEdit clipboardRef treeIRef = do
       = do
         valueEdit <- (Widget.atKeymap . Keymap.removeKeys)
                      [Config.expandKey, Config.collapseKey] `liftM`
-                     makeTextEdit 2 TextEdit.defaultAttr TextEdit.editingAttr
+                     makeTextEdit 1 TextEdit.defaultAttr TextEdit.editingAttr
                      valueTextEditModelRef
         isExpanded <- Property.get isExpandedRef
         lowRow <- if isExpanded
