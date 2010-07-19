@@ -1,6 +1,3 @@
-* Make an anchor of (Typeable?) GUI state by name so I don't have to
-  add Anchors
-
 --- XML UI ----------------------------------
 
 * Attributes, text leaf GUI widgets

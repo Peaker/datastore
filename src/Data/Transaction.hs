@@ -11,8 +11,10 @@ module Data.Transaction
      writeIRef,
      newIRef, newKey,
      fromIRef, fromIRefDef,
+     container, containerDef, containerStr,
      followBy, follow,
-     anchorRef, anchorRefDef)
+     anchorRef, anchorRefDef,
+     anchorContainer, anchorContainerDef)
 where
 
 import Prelude hiding (lookup)
@@ -21,11 +23,13 @@ import Control.Monad(liftM)
 import Control.Monad.Trans.State.Strict(StateT, runStateT, get, modify)
 import Control.Monad.Trans.Reader(ReaderT, runReaderT, ask)
 import Control.Monad.Trans.Class(MonadTrans(..))
+import Data.ByteString.UTF8(fromString)
 import Data.Binary(Binary)
 import Data.Binary.Utils(encodeS, decodeS)
 import Data.IRef(IRef)
 import qualified Data.IRef as IRef
 import Data.Guid(Guid)
+import qualified Data.Guid as Guid
 import qualified Data.Property as Property
 import Data.Monoid(mempty)
 import Data.ByteString(ByteString)
@@ -84,29 +88,47 @@ lookup = (liftM . liftM) decodeS . lookupBS
 insert :: (Monad m, Binary a) => Key -> a -> Transaction t m ()
 insert key = insertBS key . encodeS
 
-readIRefDef :: (Monad m, Binary a) => Transaction t m a -> IRef a -> Transaction t m a
-readIRefDef def iref =
-  maybe writeDefaultRet (return . decodeS) =<< lookupBS (IRef.guid iref)
+readGuidDef :: (Monad m, Binary a) => Transaction t m a -> Guid -> Transaction t m a
+readGuidDef def guid =
+  maybe writeDefault (return . decodeS) =<< lookupBS guid
   where
-    writeDefaultRet = do
+    writeDefault = do
       d <- def
-      writeIRef iref d
+      writeGuid guid d
       return d
 
-readIRef :: (Monad m, Binary a) => IRef a -> Transaction t m a
-readIRef iref =
-  liftM decodeS $ unJust =<< lookupBS (IRef.guid iref)
+readGuid :: (Monad m, Binary a) => Guid -> Transaction t m a
+readGuid guid = liftM decodeS $ unJust =<< lookupBS guid
   where
-    unJust = maybe (fail $ show iref ++ " to inexistent object dereferenced") return
+    unJust = maybe (fail $ show guid ++ " to inexistent object dereferenced") return
+
+writeGuid :: (Monad m, Binary a) => Guid -> a -> Transaction t m ()
+writeGuid = insert
+
+readIRefDef :: (Monad m, Binary a) => Transaction t m a -> IRef a -> Transaction t m a
+readIRefDef def = readGuidDef def . IRef.guid
+
+readIRef :: (Monad m, Binary a) => IRef a -> Transaction t m a
+readIRef = readGuid . IRef.guid
 
 writeIRef :: (Monad m, Binary a) => IRef a -> a -> Transaction t m ()
-writeIRef iref = insert (IRef.guid iref)
+writeIRef = writeGuid . IRef.guid
 
 fromIRef :: (Monad m, Binary a) => IRef a -> Property t m a
 fromIRef iref = Property.Property (readIRef iref) (writeIRef iref)
 
 fromIRefDef :: (Monad m, Binary a) => Transaction t m a -> IRef a -> Property t m a
 fromIRefDef def iref = Property.Property (readIRefDef def iref) (writeIRef iref)
+
+container :: (Monad m, Binary a) => IRef a -> Guid -> Property t m a
+container iref guid = Property.Property (readGuid cGuid) (writeGuid cGuid)
+  where
+    cGuid = IRef.guid iref `Guid.xor` guid
+
+containerDef :: (Monad m, Binary a) => Transaction t m a -> IRef a -> Guid -> Property t m a
+containerDef def iref guid = Property.Property (readGuidDef def cGuid) (writeGuid cGuid)
+  where
+    cGuid = IRef.guid iref `Guid.xor` guid
 
 newKey :: Monad m => Transaction t m Key
 newKey = liftInner . storeNewKey =<< liftReaderT ask
@@ -135,6 +157,15 @@ anchorRef = fromIRef . IRef.anchorIRef
 
 anchorRefDef :: (Monad m, Binary a) => String -> Transaction t m a -> Property t m a
 anchorRefDef name def = fromIRefDef def . IRef.anchorIRef $ name
+
+anchorContainer :: (Monad m, Binary a) => String -> Guid -> Property t m a
+anchorContainer = container . IRef.anchorIRef
+
+anchorContainerDef :: (Monad m, Binary a) => String -> Transaction t m a -> Guid -> Property t m a
+anchorContainerDef name def = containerDef def . IRef.anchorIRef $ name
+
+containerStr :: (Monad m, Binary a) => (Guid -> Property t m a) -> String -> Property t m a
+containerStr c = c . Guid.make . fromString
 
 run :: Monad m => Store t m -> Transaction t m a -> m a
 run store transaction = do

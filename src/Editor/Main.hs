@@ -243,7 +243,7 @@ makeEditWidget clipboardRef = do
   treeEdit <- makeTreeEdit clipboardRef focalPointIRef
   widget <-
     if rootIRef /= focalPointIRef
-    then makeGrid [[goUp rootIRef], [treeEdit]] Anchors.goRootGrid
+    then makeGrid [[goUp rootIRef], [treeEdit]] (Anchors.viewGridsAnchor "goRoot")
     else return treeEdit
   return .
     Widget.strongerKeys (goRootKeymap rootIRef focalPointIRef) $
@@ -271,6 +271,9 @@ widgetDownTransaction store = runTrans . (liftM . fmap) runTrans
   where
     runTrans = Transaction.run store
 
+branchSelector :: Monad m => Transaction.Property DBTag m Grid.Model
+branchSelector = Anchors.dbGridsAnchor "branchSelector"
+
 -- Apply the transactions to the given View and convert them to
 -- transactions on a DB
 makeWidgetForView :: Monad m => View -> Transaction DBTag m (Widget (Transaction DBTag m ()))
@@ -287,7 +290,7 @@ makeWidgetForView view = do
       versionIRef <- Branch.new =<< View.curVersionIRef view
       textEditModelIRef <- Transaction.newIRef $ TextEdit.initModel "New view"
       let viewPair = (textEditModelIRef, versionIRef)
-      appendGridChild Anchors.branchSelector Anchors.branches viewPair
+      appendGridChild branchSelector Anchors.branches viewPair
     undoKeymap version =
         if Version.depth version > 1
         then Keymap.simpleton "Undo" Config.undoKey .
@@ -303,22 +306,22 @@ main = Db.withDb "/tmp/db.db" $ Run.widgetLoopWithOverlay 20 30 . const . makeWi
       versionMap <- Property.get Anchors.versionMap
       branches <- Property.get Anchors.branches
       pairs <- mapM pair branches
-      (viewSelector, branch) <- makeChoiceWidget pairs Anchors.branchSelector
+      (viewSelector, branch) <- makeChoiceWidget pairs branchSelector
       let view = View.make versionMap branch
       viewEdit <- Widget.strongerKeys quitKeymap
                   `liftM` makeWidgetForView view
       makeGrid
         [[viewEdit,
           Widget.simpleDisplay Spacer.makeHorizontal,
-          Widget.strongerKeys (delBranchKeymap branches) viewSelector]]
-        Anchors.mainGrid
+          Widget.strongerKeys (delBranchKeymap branches) viewSelector]] $
+        Anchors.dbGridsAnchor "main"
 
     delBranchKeymap [_] = mempty
     delBranchKeymap _ = Keymap.simpleton "Delete Branch" Config.delBranchKey deleteCurBranch
     quitKeymap = Keymap.simpleton "Quit" Config.quitKey . fail $ "Quit"
 
     deleteCurBranch = do
-      _ <- popCurChild Anchors.branchSelector Anchors.branches
+      _ <- popCurChild branchSelector Anchors.branches
       return ()
 
     simpleTextEdit =
