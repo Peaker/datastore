@@ -13,7 +13,7 @@ module Data.Transaction
      fromIRef, fromIRefDef,
      followBy,
      anchorRef, anchorRefDef,
-     Container, ContainerRef, containerGuidBase, containerStr,
+     Container, containerStr,
      fromContainerRef, fromContainerRefDef,
      anchorContainer, anchorContainerDef)
 where
@@ -29,6 +29,8 @@ import Data.Binary(Binary)
 import Data.Binary.Utils(encodeS, decodeS)
 import Data.IRef(IRef)
 import qualified Data.IRef as IRef
+import Data.ContainerRef(ContainerRef)
+import qualified Data.ContainerRef as ContainerRef
 import Data.Guid(Guid)
 import qualified Data.Guid as Guid
 import qualified Data.Property as Property
@@ -39,8 +41,6 @@ import Data.Map(Map)
 
 type Property t m = Property.Property (Transaction t m)
 type Container k t m a = k -> Property t m a
-newtype ContainerRef a = ContainerRef { containerGuidBase :: Guid }
-  deriving (Eq, Ord, Binary, Read, Show)
 
 type Key = Guid
 type Value = Maybe ByteString -- Nothing means delete, Just means insert/modify
@@ -92,9 +92,15 @@ lookup = (liftM . liftM) decodeS . lookupBS
 insert :: (Monad m, Binary a) => Key -> a -> Transaction t m ()
 insert key = insertBS key . encodeS
 
+writeGuid :: (Monad m, Binary a) => Guid -> a -> Transaction t m ()
+writeGuid = insert
+
+readGuidMb :: (Monad m, Binary a) => Transaction t m a -> Guid -> Transaction t m a
+readGuidMb nothingCase guid =
+  maybe nothingCase (return . decodeS) =<< lookupBS guid
+
 readGuidDef :: (Monad m, Binary a) => Transaction t m a -> Guid -> Transaction t m a
-readGuidDef def guid =
-  maybe writeDefault (return . decodeS) =<< lookupBS guid
+readGuidDef def guid = readGuidMb writeDefault guid
   where
     writeDefault = do
       d <- def
@@ -102,12 +108,9 @@ readGuidDef def guid =
       return d
 
 readGuid :: (Monad m, Binary a) => Guid -> Transaction t m a
-readGuid guid = liftM decodeS $ unJust =<< lookupBS guid
+readGuid guid = readGuidMb failure guid
   where
-    unJust = maybe (fail $ show guid ++ " to inexistent object dereferenced") return
-
-writeGuid :: (Monad m, Binary a) => Guid -> a -> Transaction t m ()
-writeGuid = insert
+    failure = fail $ show guid ++ " to inexistent object dereferenced"
 
 readIRefDef :: (Monad m, Binary a) => Transaction t m a -> IRef a -> Transaction t m a
 readIRefDef def = readGuidDef def . IRef.guid
@@ -124,15 +127,18 @@ fromIRef iref = Property.Property (readIRef iref) (writeIRef iref)
 fromIRefDef :: (Monad m, Binary a) => Transaction t m a -> IRef a -> Property t m a
 fromIRefDef def iref = Property.Property (readIRefDef def iref) (writeIRef iref)
 
-fromContainerRef :: (Monad m, Binary a) => ContainerRef a -> Container Guid t m a
-fromContainerRef containerRef guid = Property.Property (readGuid key) (writeGuid key)
+fromContainerRefI :: (Monad m, Binary a) =>
+                     (Guid -> Transaction t m a) ->
+                     ContainerRef a -> Container Guid t m a
+fromContainerRefI guidReader containerRef guid = Property.Property (guidReader key) (writeGuid key)
   where
-    key = containerGuidBase containerRef `Guid.xor` guid
+    key = ContainerRef.guidBase containerRef `Guid.xor` guid
+
+fromContainerRef :: (Monad m, Binary a) => ContainerRef a -> Container Guid t m a
+fromContainerRef = fromContainerRefI readGuid
 
 fromContainerRefDef :: (Monad m, Binary a) => Transaction t m a -> ContainerRef a -> Container Guid t m a
-fromContainerRefDef def containerRef guid = Property.Property (readGuidDef def key) (writeGuid key)
-  where
-    key = containerGuidBase containerRef `Guid.xor` guid
+fromContainerRefDef def = fromContainerRefI $ readGuidDef def
 
 newKey :: Monad m => Transaction t m Key
 newKey = liftInner . storeNewKey =<< liftReaderT ask
@@ -144,7 +150,7 @@ newIRef val = do
   return (IRef.unsafeFromGuid newGuid)
 
 newContainerRef :: (Monad m, Binary a) => Transaction t m (ContainerRef a)
-newContainerRef = ContainerRef `liftM` newKey
+newContainerRef = ContainerRef.unsafeFromGuid `liftM` newKey
 
 -- Dereference the *current* value of the IRef (Will not track new
 -- values of IRef, by-value and not by-name)
@@ -155,16 +161,16 @@ followBy :: (Monad m, Binary a) =>
 followBy conv = liftM (fromIRef . conv) . Property.get
 
 anchorRef :: (Monad m, Binary a) => String -> Property t m a
-anchorRef = fromIRef . IRef.anchorIRef
+anchorRef = fromIRef . IRef.anchor
 
 anchorRefDef :: (Monad m, Binary a) => String -> Transaction t m a -> Property t m a
-anchorRefDef name def = fromIRefDef def . IRef.anchorIRef $ name
+anchorRefDef name def = fromIRefDef def . IRef.anchor $ name
 
 anchorContainer :: (Monad m, Binary a) => String -> Container Guid t m a
-anchorContainer = fromContainerRef . ContainerRef . Guid.fromString
+anchorContainer = fromContainerRef . ContainerRef.anchor
 
 anchorContainerDef :: (Monad m, Binary a) => String -> Transaction t m a -> Container Guid t m a
-anchorContainerDef name def = fromContainerRefDef def . ContainerRef . Guid.fromString $ name
+anchorContainerDef name def = fromContainerRefDef def . ContainerRef.anchor $ name
 
 containerStr :: (Monad m, Binary a) =>
                 Container Guid t m a ->

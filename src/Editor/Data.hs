@@ -10,6 +10,7 @@ where
 
 import Data.Binary(Binary(..))
 import Data.Binary.Utils(get3, put3)
+import Data.ContainerRef(ContainerRef)
 import Data.IRef(IRef)
 import Data.IRef.Tree(Tree(..), nodeValue, nodeChildrenRefs)
 import Data.Transaction(Transaction)
@@ -19,12 +20,12 @@ import qualified Graphics.UI.VtyWidgets.Grid as Grid
 import qualified Graphics.UI.VtyWidgets.TextEdit as TextEdit
 
 data Data = Data {
-  _gridModels :: Transaction.ContainerRef Grid.Model,
+  _gridModels :: ContainerRef Grid.Model,
   _textEditModel :: TextEdit.Model,
   _isExpanded :: Bool
   }
 $(mkLabels [''Data])
-gridModels :: Data :-> Transaction.ContainerRef Grid.Model
+gridModels :: Data :-> ContainerRef Grid.Model
 textEditModel :: Data :-> TextEdit.Model
 isExpanded :: Data :-> Bool
 
