@@ -1,17 +1,8 @@
---- XML UI ----------------------------------
-
-* Attributes, text leaf GUI widgets
-
-* Max-depth under which you jump to a new root
-
 --- Version control -------------------------
-
-* Version should also be an IRef wrapper around VersionData, like View
-  and Branch?
 
 * Conflicts/merges!
 
-* Reflog: See stash
+* Reflog branch (see TODO in there)
 
 * Pure immutable key/value store (add only) interface?
 
@@ -29,6 +20,12 @@
 
   * Revision control (Data.Rev.Change and Data.Rev.VersionMap) can use
     pure IRefs for object values
+
+--- XML UI ----------------------------------
+
+* Attributes, text leaf GUI widgets
+
+* Max-depth under which you jump to a new root
 
 --- GC ------------------------
 

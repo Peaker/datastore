@@ -277,25 +277,25 @@ branchSelector = Anchors.dbGridsAnchor "branchSelector"
 -- transactions on a DB
 makeWidgetForView :: Monad m => View -> Transaction DBTag m (Widget (Transaction DBTag m ()))
 makeWidgetForView view = do
-  version <- View.curVersion view
+  versionData <- Version.versionData =<< View.curVersion view
   widget <- widgetDownTransaction (Anchors.viewStore view) $ do
               clipboardP <- Transaction.followBy id Anchors.clipboardIRef
               makeEditWidget clipboardP
-  return $ Widget.strongerKeys (keymaps version) widget
+  return $ Widget.strongerKeys (keymaps versionData) widget
   where
-    keymaps version = undoKeymap version `mappend` makeBranchKeymap
+    keymaps versionData = undoKeymap versionData `mappend` makeBranchKeymap
     makeBranchKeymap = Keymap.simpleton "New Branch" Config.makeBranchKey makeBranch
     makeBranch = do
-      versionIRef <- Branch.new =<< View.curVersionIRef view
+      branch <- Branch.new =<< View.curVersion view
       textEditModelIRef <- Transaction.newIRef $ TextEdit.initModel "New view"
-      let viewPair = (textEditModelIRef, versionIRef)
+      let viewPair = (textEditModelIRef, branch)
       appendGridChild branchSelector Anchors.branches viewPair
-    undoKeymap version =
-        if Version.depth version > 1
+    undoKeymap versionData =
+        if Version.depth versionData > 1
         then Keymap.simpleton "Undo" Config.undoKey .
              View.move view .
              fromJust . Version.parent $
-             version
+             versionData
         else mempty
 
 main :: IO ()
@@ -328,6 +328,6 @@ main = Db.withDb "/tmp/db.db" $ Run.widgetLoopWithOverlay 20 30 . const . makeWi
       TextEdit.defaultAttr
       TextEdit.editingAttr
 
-    pair (textEditModelIRef, versionIRef) = do
+    pair (textEditModelIRef, version) = do
       textEdit <- simpleTextEdit . Transaction.fromIRef $ textEditModelIRef
-      return (textEdit, versionIRef)
+      return (textEdit, version)

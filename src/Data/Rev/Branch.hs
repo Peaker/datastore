@@ -1,7 +1,7 @@
 {-# OPTIONS -O2 -Wall #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Data.Rev.Branch
-    (Branch, new, move, curVersionIRef, newVersion)
+    (Branch, new, move, curVersion, newVersion)
 where
 
 import Control.Monad(liftM)
@@ -16,23 +16,23 @@ import qualified Data.Rev.Version as Version
 -- | A Branch is a mutable version ptr
 
 newtype BranchData = BranchData {
-  brVersionIRef :: IRef Version
+  brVersion :: Version
   }
   deriving (Eq, Ord, Read, Show, Binary)
 newtype Branch = Branch (IRef BranchData)
   deriving (Eq, Ord, Read, Show, Binary)
 
-new :: Monad m => IRef Version -> Transaction t m Branch
-new versionIRef = Branch `liftM`
-                  Transaction.newIRef (BranchData versionIRef)
+new :: Monad m => Version -> Transaction t m Branch
+new version = Branch `liftM`
+              Transaction.newIRef (BranchData version)
 
-move :: Monad m => Branch -> IRef Version -> Transaction t m ()
+move :: Monad m => Branch -> Version -> Transaction t m ()
 move (Branch dataIRef) dest = Transaction.writeIRef dataIRef (BranchData dest)
 
-curVersionIRef :: Monad m => Branch -> Transaction t m (IRef Version)
-curVersionIRef (Branch dataIRef) = brVersionIRef `liftM` Transaction.readIRef dataIRef
+curVersion :: Monad m => Branch -> Transaction t m Version
+curVersion (Branch dataIRef) = brVersion `liftM` Transaction.readIRef dataIRef
 
 newVersion :: Monad m => Branch -> [Change] -> Transaction t m ()
 newVersion branch changes = do
-  versionIRef <- curVersionIRef branch
-  move branch =<< Version.newVersion versionIRef changes
+  version <- curVersion branch
+  move branch =<< Version.newVersion version changes

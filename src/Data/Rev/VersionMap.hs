@@ -21,10 +21,10 @@ import Data.Transaction(Transaction)
 import qualified Data.Guid as Guid
 import Data.Rev.Change(Change)
 import qualified Data.Rev.Change as Change
-import Data.Rev.Version(Version(Version))
+import Data.Rev.Version(Version)
 import qualified Data.Rev.Version as Version
 
-newtype VersionMapData = VersionMapData (IRef Version)
+newtype VersionMapData = VersionMapData Version
   deriving (Binary)
 newtype VersionMap = VersionMap {
   -- This key is XOR'd with object keys to yield the IRef to each
@@ -48,25 +48,25 @@ applyChanges vm changeDir = mapM_ applyChange
     setValue key Nothing      = Transaction.deleteBS key
     setValue key (Just value) = Transaction.insertBS key value
 
-move :: Monad m => VersionMap -> IRef Version -> Transaction t m ()
-move vm destVersionIRef = do
+move :: Monad m => VersionMap -> Version -> Transaction t m ()
+move vm destVersion = do
   let vmDataRef = Transaction.fromIRef . vmKey $ vm
-  VersionMapData srcVersionIRef <- Property.get vmDataRef
-  mraIRef <- Version.mostRecentAncestor srcVersionIRef destVersionIRef
-  Version.walkUp applyBackward mraIRef srcVersionIRef
-  Version.walkDown applyForward mraIRef destVersionIRef
-  Property.set vmDataRef $ VersionMapData destVersionIRef
+  VersionMapData srcVersion <- Property.get vmDataRef
+  mraIRef <- Version.mostRecentAncestor srcVersion destVersion
+  Version.walkUp applyBackward mraIRef srcVersion
+  Version.walkDown applyForward mraIRef destVersion
+  Property.set vmDataRef $ VersionMapData destVersion
   where
     applyForward = apply Change.newValue
     applyBackward = apply Change.oldValue
     apply changeDir version = applyChanges vm changeDir . Version.changes $ version
 
-new :: Monad m => IRef Version -> Transaction t m VersionMap
-new versionIRef = do
-  vm <- VersionMap `liftM` Transaction.newIRef (VersionMapData versionIRef)
-  applyHistory vm =<< Transaction.readIRef versionIRef
+new :: Monad m => Version -> Transaction t m VersionMap
+new version = do
+  vm <- VersionMap `liftM` Transaction.newIRef (VersionMapData version)
+  applyHistory vm =<< Version.versionData version
   return vm
   where
-    applyHistory vm (Version _ mbParentIRef changes) = do
-      maybe (return ()) (applyHistory vm <=< Transaction.readIRef) mbParentIRef
-      applyChanges vm Change.newValue changes
+    applyHistory vm versionData = do
+      maybe (return ()) (applyHistory vm <=< Version.versionData) . Version.parent $ versionData
+      applyChanges vm Change.newValue $ Version.changes versionData

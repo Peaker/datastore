@@ -64,4 +64,4 @@ branches = Transaction.anchorRefDef "branches" $ do
 
 versionMap :: Monad m => Transaction.Property DBTag m VersionMap
 versionMap = Transaction.anchorRefDef "HEAD" $
-  VersionMap.new =<< Branch.curVersionIRef =<< (snd . head) `liftM` Property.get branches
+  VersionMap.new =<< Branch.curVersion =<< (snd . head) `liftM` Property.get branches

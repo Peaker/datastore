@@ -1,11 +1,10 @@
 {-# OPTIONS -O2 -Wall #-}
 module Data.Rev.View
-    (View(..), make, curVersionIRef, curVersion, move, store)
+    (View(..), make, curVersion, move, store)
 where
 
 import Prelude hiding (lookup)
 import Control.Monad(liftM)
-import Data.IRef(IRef)
 import Data.Transaction(Transaction, Store(..))
 import qualified Data.Transaction as Transaction
 import Data.Rev.Version(Version)
@@ -22,20 +21,17 @@ data View = View { cache :: VersionMap,
 make :: VersionMap -> Branch -> View
 make = View
 
-curVersionIRef :: Monad m => View -> Transaction t m (IRef Version)
-curVersionIRef view = Branch.curVersionIRef (branch view)
-
 curVersion :: Monad m => View -> Transaction t m Version
-curVersion view = Transaction.readIRef =<< curVersionIRef view
+curVersion view = Branch.curVersion (branch view)
 
-move :: Monad m => View -> IRef Version -> Transaction t m ()
+move :: Monad m => View -> Version -> Transaction t m ()
 move = Branch.move . branch
 
 newVersion :: Monad m => View -> [Change] -> Transaction t m ()
 newVersion view = Branch.newVersion (branch view)
 
 sync :: Monad m => View -> Transaction t m ()
-sync view = VersionMap.move (cache view) =<< Branch.curVersionIRef (branch view)
+sync view = VersionMap.move (cache view) =<< Branch.curVersion (branch view)
 
 -- unsafe because it assumes you sync'd:
 unsafeLookupBS :: Monad m => View -> Change.Key -> Transaction t m (Maybe Change.Value)
