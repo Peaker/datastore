@@ -186,7 +186,8 @@ makeTreeEdit clipboardRef treeIRef = do
                      valueTextEditModelRef
         isExpanded <- Property.get isExpandedRef
         lowRow <- if isExpanded
-                  then ((:[]) . (:[])) `liftM`
+                  then ((:[]) . (:[]) .
+                        Widget.weakerKeys moveToParentKeymap) `liftM`
                        makeChildGrid clipboardRef outerGridModelRef childrenGridModelRef childrenIRefsRef
                   else return []
         cValueEdit <- makeGrid [[collapser isExpanded,
@@ -225,6 +226,8 @@ makeTreeEdit clipboardRef treeIRef = do
             Property.set clipboardRef xs
         appendNewNodeKeymap = Keymap.simpleton "Append new child node"
                               Config.appendChildKey $ appendChild =<< Data.makeLeafRef ""
+        moveToParentKeymap = Keymap.simpleton "Move to parent" Config.moveToParentKey $
+                             Property.set outerGridModelRef (yGridCursor 0)
         setRootKeymap =
           Keymap.simpleton "Set focal point" Config.setFocalPointKey $
             Property.set Anchors.focalPointIRef treeIRef

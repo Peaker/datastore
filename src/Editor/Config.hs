@@ -4,7 +4,7 @@ module Editor.Config(
     quitKey, undoKey, rootKey, appendChildKey, delChildKey,
     setFocalPointKey, cutKey, pasteKey,
     makeBranchKey, delBranchKey,
-    actionKey, collapseKey, expandKey)
+    actionKey, collapseKey, expandKey, moveToParentKey)
 where
 
 import qualified Graphics.Vty as Vty
@@ -22,3 +22,4 @@ delBranchKey = ([Vty.MCtrl], Vty.KASCII 'o')
 actionKey = ([], Vty.KEnter)
 collapseKey = ([], Vty.KASCII '[')
 expandKey = ([], Vty.KASCII ']')
+moveToParentKey = ([Vty.MMeta], Vty.KLeft)
