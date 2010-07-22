@@ -25,13 +25,13 @@ import Data.Rev.Version(Version)
 import qualified Data.Rev.Version as Version
 
 newtype VersionMapData = VersionMapData Version
-  deriving (Binary)
+  deriving (Binary, Eq, Ord, Show, Read)
 newtype VersionMap = VersionMap {
   -- This key is XOR'd with object keys to yield the IRef to each
   -- object's current version ref:
   vmKey :: IRef VersionMapData
   }
-  deriving (Eq, Ord, Binary)
+  deriving (Eq, Ord, Binary, Show, Read)
 
 makeKey :: VersionMap -> Change.Key -> Guid
 makeKey = Guid.xor . IRef.guid . vmKey

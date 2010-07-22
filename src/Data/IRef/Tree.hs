@@ -13,6 +13,7 @@ data Tree a = Node {
   _nodeValue :: a,
   _nodeChildrenRefs :: [IRef (Tree a)]
   }
+  deriving (Show, Read, Eq, Ord)
 $(mkLabels [''Tree])
 nodeValue :: Tree a :-> a
 nodeChildrenRefs :: Tree a :-> [IRef (Tree a)]

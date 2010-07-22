@@ -24,6 +24,7 @@ data Data = Data {
   _textEditModel :: TextEdit.Model,
   _isExpanded :: Bool
   }
+  deriving (Show, Read, Eq, Ord)
 $(mkLabels [''Data])
 gridModels :: Data :-> ContainerRef Grid.Model
 textEditModel :: Data :-> TextEdit.Model
