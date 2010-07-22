@@ -147,7 +147,7 @@ newIRef :: (Monad m, Binary a) => a -> Transaction t m (IRef a)
 newIRef val = do
   newGuid <- newKey
   insert newGuid val
-  return (IRef.unsafeFromGuid newGuid)
+  return $ IRef.unsafeFromGuid newGuid
 
 newContainerRef :: (Monad m, Binary a) => Transaction t m (ContainerRef a)
 newContainerRef = ContainerRef.unsafeFromGuid `liftM` newKey
@@ -180,5 +180,5 @@ containerStr c = c . Guid.make . fromString
 run :: Monad m => Store t m -> Transaction t m a -> m a
 run store transaction = do
   (res, changes) <- (`runStateT` mempty) . (`runReaderT` store) . unTransaction $ transaction
-  storeTransaction store (Map.toList changes)
+  storeTransaction store $ Map.toList changes
   return res

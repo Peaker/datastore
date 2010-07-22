@@ -9,7 +9,7 @@ where
 -- | redundant to the lists of changes stored in the version graph.
 
 import Prelude hiding (lookup)
-import Control.Monad(liftM, (<=<))
+import Control.Monad(liftM, (<=<), when)
 import qualified Data.Record.Label as Label
 import Data.Guid(Guid)
 import Data.Binary(Binary)
@@ -52,10 +52,11 @@ move :: Monad m => VersionMap -> Version -> Transaction t m ()
 move vm destVersion = do
   let vmDataRef = Transaction.fromIRef . vmKey $ vm
   VersionMapData srcVersion <- Property.get vmDataRef
-  mraIRef <- Version.mostRecentAncestor srcVersion destVersion
-  Version.walkUp applyBackward mraIRef srcVersion
-  Version.walkDown applyForward mraIRef destVersion
-  Property.set vmDataRef $ VersionMapData destVersion
+  when (srcVersion /= destVersion) $ do
+    mraIRef <- Version.mostRecentAncestor srcVersion destVersion
+    Version.walkUp applyBackward mraIRef srcVersion
+    Version.walkDown applyForward mraIRef destVersion
+    Property.set vmDataRef $ VersionMapData destVersion
   where
     applyForward = apply Change.newValue
     applyBackward = apply Change.oldValue

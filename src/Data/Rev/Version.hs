@@ -37,7 +37,10 @@ versionData = Transaction.readIRef . versionIRef
 newVersion :: Monad m => Version -> [Change] -> Transaction t m Version
 newVersion version newChanges = do
   parentDepth <- liftM depth . versionData $ version
-  liftM Version . Transaction.newIRef . VersionData (parentDepth+1) (Just version) $ newChanges
+  liftM Version .
+    Transaction.newIRef .
+    VersionData (parentDepth+1) (Just version) $
+    newChanges
 
 mostRecentAncestor :: Monad m => Version -> Version -> Transaction t m Version
 mostRecentAncestor = mra

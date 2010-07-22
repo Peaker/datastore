@@ -46,9 +46,9 @@ transaction :: Monad m => View -> [(Change.Key, Maybe Change.Value)] -> Transact
 transaction _    [] = return ()
 transaction view changes = do
   sync view
-  newVersion view =<< (mapM $ uncurry viewMakeChange) changes
+  newVersion view =<< mapM viewMakeChange changes
   where
-    viewMakeChange key value =
+    viewMakeChange (key, value) =
       flip (Change.make key) value `liftM` unsafeLookupBS view key
 
 -- You get a store tagged however you like...
