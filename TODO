@@ -1,3 +1,5 @@
+* Phantom type for read-only transactions vs write transactions
+
 --- Version control -------------------------
 
 * Conflicts/merges!

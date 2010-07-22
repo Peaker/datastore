@@ -3,7 +3,6 @@
 module Main (main) where
 
 import Control.Monad(join)
-import Data.IRef(IRef)
 import Data.Transaction(Transaction)
 import qualified Data.Rev.View as View
 import qualified Data.Transaction as Transaction
@@ -18,15 +17,17 @@ import qualified Data.Record.Label as Label
 
 type Action = IO ()
 
-writeTreeXml :: Monad m => Handle -> Int -> IRef Data.TreeD -> Transaction ViewTag m Action
-writeTreeXml outFile depth iref = do
-  let ref = Transaction.fromIRef iref
+writeTreeXml :: Monad m =>
+                Handle -> Int ->
+                Transaction.Property ViewTag m Data.TreeD ->
+                Transaction ViewTag m Action
+writeTreeXml outFile depth ref = do
   value <- Property.get $ Data.nodeValue `Property.composeLabel` ref
   childrenIRefs <- Property.get (Data.nodeChildrenRefs `Property.composeLabel` ref)
   let text = TextEdit.textEditText . Label.get Data.textEditModel $ value
       indent = (replicate (2 * depth) ' ' ++)
   let before = hPutStrLn outFile . indent $ "<" ++ text ++ ">"
-  bodies <- mapM (writeTreeXml outFile (depth + 1)) childrenIRefs
+  bodies <- mapM (writeTreeXml outFile (depth + 1) . Transaction.fromIRef) childrenIRefs
   let after = hPutStrLn outFile . indent $ "</" ++ text ++ ">"
   return . sequence_ $ [before] ++ bodies ++ [after]
 
@@ -36,7 +37,13 @@ printXml = do
   branch <- (snd . head) `fmap` Property.get Anchors.branches
   let view = View.make versionMap branch
   Transaction.run (Anchors.viewStore view) $
-    writeTreeXml stdout 0 =<< Property.get Anchors.rootIRef
+    writeTreeXml stdout 0 Anchors.root
 
 main :: IO ()
-main = Db.withDb "/tmp/db.db" $ \db -> join $ Transaction.run (Anchors.dbStore db) printXml
+main = Db.withDb "/tmp/db.db" $ showXml
+  where
+    showXml db = do
+      Anchors.initDB store
+      join $ Transaction.run store printXml
+      where
+        store = Anchors.dbStore db

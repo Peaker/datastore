@@ -5,35 +5,38 @@ module Editor.Data(
     gridModel,
     Tree(..), nodeValue, nodeChildrenRefs,
     ITree, ITreeD, TreeD,
-    makeValue, makeNodeRef, makeLeafRef)
+    makeValue, makeNode, makeNodeRef, makeLeafRef)
 where
 
+import Prelude hiding ((.), id)
+import Control.Category((.))
 import Data.Binary(Binary(..))
 import Data.Binary.Utils(get3, put3)
-import Data.ContainerRef(ContainerRef)
 import Data.IRef(IRef)
 import Data.IRef.Tree(Tree(..), nodeValue, nodeChildrenRefs)
 import Data.Transaction(Transaction)
 import qualified Data.Transaction as Transaction
 import Data.Record.Label((:->), mkLabels, label)
+import qualified Data.Record.Label.Map as Label.Map
+import qualified Data.Record.Label.Maybe as Label.Maybe
 import qualified Graphics.UI.VtyWidgets.Grid as Grid
 import qualified Graphics.UI.VtyWidgets.TextEdit as TextEdit
+import Data.Map(Map)
+import qualified Data.Map as Map
 
 data Data = Data {
-  _gridModels :: ContainerRef Grid.Model,
+  _gridModels :: Map String Grid.Model,
   _textEditModel :: TextEdit.Model,
   _isExpanded :: Bool
   }
   deriving (Show, Read, Eq, Ord)
 $(mkLabels [''Data])
-gridModels :: Data :-> ContainerRef Grid.Model
+gridModels :: Data :-> Map String Grid.Model
 textEditModel :: Data :-> TextEdit.Model
 isExpanded :: Data :-> Bool
 
-gridModel :: Monad m => Grid.Model -> Data -> Transaction.Container String t m Grid.Model
-gridModel defModel = Transaction.containerStr .
-                     Transaction.fromContainerRefDef (return defModel) .
-                     _gridModels
+gridModel :: Grid.Model -> String -> Data :-> Grid.Model
+gridModel d key = Label.Maybe.fromMaybe d . Label.Map.value key . gridModels
 
 instance Binary Data where
   get = get3 Data
@@ -44,18 +47,19 @@ type TreeD = Tree Data
 
 type ITree a = IRef (Tree a)
 
-makeValue :: Monad m => String -> Transaction t m Data
-makeValue text = do
-  gridModelsGuid <- Transaction.newContainerRef
-  return
-    Data {
-      _gridModels = gridModelsGuid,
-      _textEditModel = TextEdit.initModel text,
-      _isExpanded = True
-    }
+makeValue :: String -> Data
+makeValue text =
+  Data {
+    _gridModels = Map.empty,
+    _textEditModel = TextEdit.initModel text,
+    _isExpanded = True
+  }
+
+makeNode :: String -> [ITreeD] -> TreeD
+makeNode = Node . makeValue
 
 makeNodeRef :: Monad m => String -> [ITreeD] -> Transaction t m ITreeD
-makeNodeRef text childrenRefs = Transaction.newIRef . flip Node childrenRefs =<< makeValue text
+makeNodeRef text childrenRefs = Transaction.newIRef $ makeNode text childrenRefs
 
 makeLeafRef :: Monad m => String -> Transaction t m ITreeD
 makeLeafRef text = makeNodeRef text []

@@ -7,8 +7,8 @@ module Data.Transaction
      lookupBS, lookup,
      insertBS, insert,
      deleteBS, delete,
-     readIRef, readIRefDef,
-     writeIRef,
+     readIRef, readIRefDef, writeIRef,
+     irefExists,
      newIRef, newContainerRef, newKey,
      fromIRef, fromIRefDef,
      followBy,
@@ -95,28 +95,29 @@ insert key = insertBS key . encodeS
 writeGuid :: (Monad m, Binary a) => Guid -> a -> Transaction t m ()
 writeGuid = insert
 
+guidExists :: Monad m => Guid -> Transaction t m Bool
+guidExists = liftM (maybe False $ const True) . lookupBS
+
 readGuidMb :: (Monad m, Binary a) => Transaction t m a -> Guid -> Transaction t m a
 readGuidMb nothingCase guid =
   maybe nothingCase (return . decodeS) =<< lookupBS guid
 
-readGuidDef :: (Monad m, Binary a) => Transaction t m a -> Guid -> Transaction t m a
-readGuidDef def guid = readGuidMb writeDefault guid
-  where
-    writeDefault = do
-      d <- def
-      writeGuid guid d
-      return d
+readGuidDef :: (Monad m, Binary a) => a -> Guid -> Transaction t m a
+readGuidDef def guid = readGuidMb (return def) guid
 
 readGuid :: (Monad m, Binary a) => Guid -> Transaction t m a
 readGuid guid = readGuidMb failure guid
   where
     failure = fail $ show guid ++ " to inexistent object dereferenced"
 
-readIRefDef :: (Monad m, Binary a) => Transaction t m a -> IRef a -> Transaction t m a
+readIRefDef :: (Monad m, Binary a) => a -> IRef a -> Transaction t m a
 readIRefDef def = readGuidDef def . IRef.guid
 
 readIRef :: (Monad m, Binary a) => IRef a -> Transaction t m a
 readIRef = readGuid . IRef.guid
+
+irefExists :: (Monad m, Binary a) => IRef a -> Transaction t m Bool
+irefExists = guidExists . IRef.guid
 
 writeIRef :: (Monad m, Binary a) => IRef a -> a -> Transaction t m ()
 writeIRef = writeGuid . IRef.guid
@@ -124,8 +125,8 @@ writeIRef = writeGuid . IRef.guid
 fromIRef :: (Monad m, Binary a) => IRef a -> Property t m a
 fromIRef iref = Property.Property (readIRef iref) (writeIRef iref)
 
-fromIRefDef :: (Monad m, Binary a) => Transaction t m a -> IRef a -> Property t m a
-fromIRefDef def iref = Property.Property (readIRefDef def iref) (writeIRef iref)
+fromIRefDef :: (Monad m, Binary a) => IRef a -> a -> Property t m a
+fromIRefDef iref def = Property.Property (readIRefDef def iref) (writeIRef iref)
 
 fromContainerRefI :: (Monad m, Binary a) =>
                      (Guid -> Transaction t m a) ->
@@ -137,7 +138,7 @@ fromContainerRefI guidReader containerRef guid = Property.Property (guidReader k
 fromContainerRef :: (Monad m, Binary a) => ContainerRef a -> Container Guid t m a
 fromContainerRef = fromContainerRefI readGuid
 
-fromContainerRefDef :: (Monad m, Binary a) => Transaction t m a -> ContainerRef a -> Container Guid t m a
+fromContainerRefDef :: (Monad m, Binary a) => a -> ContainerRef a -> Container Guid t m a
 fromContainerRefDef def = fromContainerRefI $ readGuidDef def
 
 newKey :: Monad m => Transaction t m Key
@@ -163,13 +164,13 @@ followBy conv = liftM (fromIRef . conv) . Property.get
 anchorRef :: (Monad m, Binary a) => String -> Property t m a
 anchorRef = fromIRef . IRef.anchor
 
-anchorRefDef :: (Monad m, Binary a) => String -> Transaction t m a -> Property t m a
-anchorRefDef name def = fromIRefDef def . IRef.anchor $ name
+anchorRefDef :: (Monad m, Binary a) => String -> a -> Property t m a
+anchorRefDef name def = flip fromIRefDef def . IRef.anchor $ name
 
 anchorContainer :: (Monad m, Binary a) => String -> Container Guid t m a
 anchorContainer = fromContainerRef . ContainerRef.anchor
 
-anchorContainerDef :: (Monad m, Binary a) => String -> Transaction t m a -> Container Guid t m a
+anchorContainerDef :: (Monad m, Binary a) => String -> a -> Container Guid t m a
 anchorContainerDef name def = fromContainerRefDef def . ContainerRef.anchor $ name
 
 containerStr :: (Monad m, Binary a) =>
