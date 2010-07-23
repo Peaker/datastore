@@ -64,17 +64,14 @@ liftStateT :: Monad m => StateT Changes m a -> Transaction t m a
 liftStateT = liftReaderT . lift
 liftInner :: Monad m => m a -> Transaction t m a
 liftInner = Transaction . lift . lift
--- TODO: Do I need the MonadTrans instance?
--- instance MonadTrans (Transaction t m) where
---   lift = liftInner
 
 lookupBS :: Monad m => Key -> Transaction t m Value
-lookupBS bs = do
+lookupBS guid = do
   changes <- liftStateT get
-  case Map.lookup bs changes of
+  case Map.lookup guid changes of
     Nothing -> do
       store <- liftReaderT ask
-      liftInner $ storeLookup store bs
+      liftInner $ storeLookup store guid
     Just res -> return res
 
 insertBS :: Monad m => Key -> ByteString -> Transaction t m ()
@@ -87,7 +84,7 @@ delete :: Monad m => Key -> Transaction t m ()
 delete = deleteBS
 
 lookup :: (Monad m, Binary a) => Key -> Transaction t m (Maybe a)
-lookup = (liftM . liftM) decodeS . lookupBS
+lookup = (liftM . fmap) decodeS . lookupBS
 
 insert :: (Monad m, Binary a) => Key -> a -> Transaction t m ()
 insert key = insertBS key . encodeS
