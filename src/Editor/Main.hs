@@ -191,7 +191,7 @@ makeTreeEdit clipboardRef treeIRef = do
   where
     treeRef = Transaction.fromIRef treeIRef
     valueRef = Data.nodeValue `composeLabel` treeRef
-    gridModelsContainer = (\def k -> Data.gridModel def k `composeLabel` valueRef)
+    gridModelsContainer def k = Data.gridModel def k `composeLabel` valueRef
     valueTextEditModelRef = Data.textEditModel `composeLabel` valueRef
     childrenIRefsRef = Data.nodeChildrenRefs `composeLabel` treeRef
     isExpandedRef = Data.isExpanded `composeLabel` valueRef

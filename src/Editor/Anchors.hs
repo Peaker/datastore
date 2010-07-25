@@ -9,7 +9,7 @@ module Editor.Anchors(
     viewStore, ViewTag)
 where
 
-import Control.Monad(liftM, when)
+import Control.Monad(liftM, unless)
 import Data.Binary(Binary)
 import Data.IRef(IRef)
 import qualified Data.IRef as IRef
@@ -39,7 +39,7 @@ viewStore :: Monad m => View -> Store ViewTag (Transaction DBTag m)
 viewStore = View.store
 
 clipboard :: Monad m => Transaction.Property ViewTag m [ITreeD]
-clipboard = Transaction.anchorRefDef "clipboard" $ []
+clipboard = Transaction.anchorRefDef "clipboard" []
 
 rootIRef :: ITreeD
 rootIRef = IRef.anchor "root"
@@ -48,7 +48,7 @@ root :: Monad m => Transaction.Property ViewTag m TreeD
 root = Transaction.fromIRef rootIRef
 
 focalPointIRef :: Monad m => Transaction.Property ViewTag m ITreeD
-focalPointIRef = Transaction.anchorRefDef "focalPoint" $ rootIRef
+focalPointIRef = Transaction.anchorRefDef "focalPoint" rootIRef
 
 gridsAnchor :: Monad m => String -> String -> Transaction.Property anyTag m Grid.Model
 gridsAnchor name = Transaction.containerStr . Transaction.anchorContainerDef name $ Grid.initModel
@@ -68,7 +68,7 @@ branches = Transaction.fromIRef branchesIRef
 initRef :: (Binary a, Monad m) => IRef a -> Transaction t m a -> Transaction t m a
 initRef iref act = do
   exists <- Transaction.irefExists iref
-  when (not exists) (Property.set p =<< act)
+  unless exists (Property.set p =<< act)
   Property.get p
   where
     p = Transaction.fromIRef iref
@@ -80,7 +80,7 @@ versionMap :: Monad m => Transaction.Property DBTag m VersionMap
 versionMap = Transaction.fromIRef versionMapIRef
 
 initDB :: Store DBTag IO -> IO ()
-initDB store = do
+initDB store =
   Transaction.run store $ do
     bs <- initRef branchesIRef $ do
       masterNameIRef <- Transaction.newIRef $ TextEdit.initModel "master"

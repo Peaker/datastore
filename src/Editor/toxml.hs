@@ -40,7 +40,7 @@ printXml = do
     writeTreeXml stdout 0 Anchors.root
 
 main :: IO ()
-main = Db.withDb "/tmp/db.db" $ showXml
+main = Db.withDb "/tmp/db.db" showXml
   where
     showXml db = do
       Anchors.initDB store

@@ -35,6 +35,7 @@ import Data.Guid(Guid)
 import qualified Data.Guid as Guid
 import qualified Data.Property as Property
 import Data.Monoid(mempty)
+import Data.Maybe(isJust)
 import Data.ByteString(ByteString)
 import qualified Data.Map as Map
 import Data.Map(Map)
@@ -93,14 +94,14 @@ writeGuid :: (Monad m, Binary a) => Guid -> a -> Transaction t m ()
 writeGuid = insert
 
 guidExists :: Monad m => Guid -> Transaction t m Bool
-guidExists = liftM (maybe False $ const True) . lookupBS
+guidExists = liftM isJust . lookupBS
 
 readGuidMb :: (Monad m, Binary a) => Transaction t m a -> Guid -> Transaction t m a
 readGuidMb nothingCase guid =
   maybe nothingCase (return . decodeS) =<< lookupBS guid
 
 readGuidDef :: (Monad m, Binary a) => a -> Guid -> Transaction t m a
-readGuidDef def guid = readGuidMb (return def) guid
+readGuidDef = readGuidMb . return
 
 readGuid :: (Monad m, Binary a) => Guid -> Transaction t m a
 readGuid guid = readGuidMb failure guid
