@@ -14,10 +14,10 @@ import qualified Data.Transaction                 as Transaction
 import           Data.Transaction                 (Transaction, Store)
 import           Data.Property                    (composeLabel)
 import qualified Data.Property                    as Property
-import qualified Data.Rev.View                    as View
-import           Data.Rev.View                    (View)
 import qualified Data.Rev.Version                 as Version
 import qualified Data.Rev.Branch                  as Branch
+import           Data.Rev.View                    (View)
+import qualified Data.Rev.View                    as View
 import           Data.Monoid                      (Monoid(..))
 import           Data.Maybe                       (fromMaybe, fromJust)
 import           Data.Vector.Rect                 (Rect(Rect))
@@ -263,8 +263,8 @@ widgetDownTransaction store = runTrans . (liftM . fmap) runTrans
   where
     runTrans = Transaction.run store
 
-branchSelector :: Monad m => Transaction.Property DBTag m Grid.Model
-branchSelector = Anchors.dbGridsAnchor "branchSelector"
+branchSelectorGridModel :: Monad m => Transaction.Property DBTag m Grid.Model
+branchSelectorGridModel = Anchors.dbGridsAnchor "branchSelector"
 
 -- Apply the transactions to the given View and convert them to
 -- transactions on a DB
@@ -281,7 +281,7 @@ makeWidgetForView view = do
       branch <- Branch.new =<< View.curVersion view
       textEditModelIRef <- Transaction.newIRef $ TextEdit.initModel "New view"
       let viewPair = (textEditModelIRef, branch)
-      appendGridChild branchSelector Anchors.branches viewPair
+      appendGridChild branchSelectorGridModel Anchors.branches viewPair
     undoKeymap versionData =
         if Version.depth versionData > 1
         then Keymap.simpleton "Undo" Config.undoKey .
@@ -297,32 +297,32 @@ main = Db.withDb "/tmp/db.db" $ runDbStore . Anchors.dbStore
       Anchors.initDB store
       Run.widgetLoopWithOverlay 20 30 . const . makeWidget $ store
     makeWidget dbStore = widgetDownTransaction dbStore $ do
-      versionMap <- Property.get Anchors.versionMap
+      view <- Property.get Anchors.view
       branches <- Property.get Anchors.branches
       pairs <- mapM pair branches
-      (viewSelector, branch) <- makeChoiceWidget pairs branchSelector
-      let view = View.make versionMap branch
+      (branchSelector, branch) <- makeChoiceWidget pairs branchSelectorGridModel
+      View.setBranch view branch
       viewEdit <- Widget.strongerKeys quitKeymap
                   `liftM` makeWidgetForView view
       makeGrid
         [[viewEdit,
           Widget.simpleDisplay Spacer.makeHorizontal,
-          Widget.strongerKeys (delBranchKeymap branches) viewSelector]] $
+          Widget.strongerKeys (delBranchKeymap branches) branchSelector]] $
         Anchors.dbGridsAnchor "main"
+
+    pair (textEditModelIRef, version) = do
+      textEdit <- simpleTextEdit . Transaction.fromIRef $ textEditModelIRef
+      return (textEdit, version)
 
     delBranchKeymap [_] = mempty
     delBranchKeymap _ = Keymap.simpleton "Delete Branch" Config.delBranchKey deleteCurBranch
     quitKeymap = Keymap.simpleton "Quit" Config.quitKey . fail $ "Quit"
 
     deleteCurBranch = do
-      _ <- popCurChild branchSelector Anchors.branches
+      _ <- popCurChild branchSelectorGridModel Anchors.branches
       return ()
 
     simpleTextEdit =
       makeTextEdit 1
       TextEdit.defaultAttr
       TextEdit.editingAttr
-
-    pair (textEditModelIRef, version) = do
-      textEdit <- simpleTextEdit . Transaction.fromIRef $ textEditModelIRef
-      return (textEdit, version)

@@ -4,7 +4,6 @@ module Main (main) where
 
 import           Control.Monad                   (join)
 import           Data.Transaction                (Transaction)
-import qualified Data.Rev.View                   as View
 import qualified Data.Transaction                as Transaction
 import qualified Data.Property                   as Property
 import qualified Db
@@ -33,9 +32,7 @@ writeTreeXml outFile depth ref = do
 
 printXml :: Transaction DBTag IO Action
 printXml = do
-  versionMap <- Property.get Anchors.versionMap
-  branch <- (snd . head) `fmap` Property.get Anchors.branches
-  let view = View.make versionMap branch
+  view <- Property.get Anchors.view
   Transaction.run (Anchors.viewStore view) $
     writeTreeXml stdout 0 Anchors.root
 

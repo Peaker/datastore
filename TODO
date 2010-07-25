@@ -1,5 +1,11 @@
 * Phantom type for read-only transactions vs write transactions
 
+  * View does a "sync" *write* transaction on DB for every read, this
+    means that all transactions above the view are Write transactions
+
+    *? Branches<->Views bidirectional link so Views are updated when
+       Branches are moved?
+
 --- Version control -------------------------
 
 * Conflicts/merges!

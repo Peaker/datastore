@@ -2,26 +2,24 @@
 
 module Editor.Anchors(
     clipboard, root, rootIRef,
-    focalPointIRef, branches, versionMap,
+    focalPointIRef, branches, view,
     viewGridsAnchor, dbGridsAnchor,
     initDB,
     dbStore, DBTag,
     viewStore, ViewTag)
 where
 
-import           Control.Monad                   (liftM, unless)
+import           Control.Monad                   (unless)
 import           Data.Binary                     (Binary)
 import           Data.IRef                       (IRef)
 import qualified Data.IRef                       as IRef
 import qualified Data.Transaction                as Transaction
 import           Data.Transaction                (Transaction, Store)
 import           Data.Rev.Branch                 (Branch)
-import           Data.Rev.VersionMap             (VersionMap)
 import           Data.Rev.View                   (View)
-import qualified Data.Rev.View                   as View
 import qualified Data.Rev.Branch                 as Branch
 import qualified Data.Rev.Version                as Version
-import qualified Data.Rev.VersionMap             as VersionMap
+import qualified Data.Rev.View                   as View
 import qualified Data.Property                   as Property
 import qualified Db
 import           Db                              (Db)
@@ -73,11 +71,11 @@ initRef iref act = do
   where
     p = Transaction.fromIRef iref
 
-versionMapIRef :: IRef VersionMap
-versionMapIRef = IRef.anchor "HEAD"
+viewIRef :: IRef View
+viewIRef = IRef.anchor "HEAD"
 
-versionMap :: Monad m => Transaction.Property DBTag m VersionMap
-versionMap = Transaction.fromIRef versionMapIRef
+view :: Monad m => Transaction.Property DBTag m View
+view = Transaction.fromIRef viewIRef
 
 initDB :: Store DBTag IO -> IO ()
 initDB store =
@@ -87,12 +85,7 @@ initDB store =
       initialVersionIRef <- Version.makeInitialVersion
       master <- Branch.new initialVersionIRef
       return [(masterNameIRef, master)]
-    vm <- initRef versionMapIRef $
-      VersionMap.new =<<
-      Branch.curVersion =<<
-      (snd . head) `liftM`
-      Property.get branches
-    let branch = (snd . head $ bs)
-    _ <- Transaction.run (viewStore $ View.make vm branch) . initRef rootIRef $
+    curView <- initRef viewIRef $ View.new (snd . head $ bs)
+    _ <- Transaction.run (viewStore curView) . initRef rootIRef $
       return $ Data.makeNode "" []
     return ()
