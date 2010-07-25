@@ -4,10 +4,10 @@ module Data.IRef.Tree
     (Tree(..), nodeValue, nodeChildrenRefs)
 where
 
-import Data.Binary(Binary(..))
-import Data.Binary.Utils(get2, put2)
-import Data.IRef(IRef)
-import Data.Record.Label((:->), mkLabels, label)
+import Data.Binary       (Binary(..))
+import Data.Binary.Utils (get2, put2)
+import Data.IRef         (IRef)
+import Data.Record.Label ((:->), mkLabels, label)
 
 data Tree a = Node {
   _nodeValue :: a,

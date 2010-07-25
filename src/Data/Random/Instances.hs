@@ -4,9 +4,9 @@
 module Data.Random.Instances()
 where
 
-import System.Random(Random(..))
-import Control.Arrow(first)
-import Data.Word(Word8)
+import System.Random (Random(..))
+import Control.Arrow (first)
+import Data.Word     (Word8)
 
 instance Random Word8 where
   randomR (a,b) = first fromIntegral . randomR (fromIntegral a :: Int, fromIntegral b)

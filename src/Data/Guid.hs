@@ -4,14 +4,14 @@ module Data.Guid
     (Guid, make, bs, length, new, xor, fromString)
 where
 
-import Prelude hiding (length)
-import qualified Data.ByteString as SBS
-import Data.Monoid(mappend)
-import qualified Data.ByteString.UTF8 as UTF8
-import Data.ByteString.Utils(randomBS, xorBS)
-import Data.Binary(Binary(..))
-import Data.Binary.Get(getByteString)
-import Data.Binary.Put(putByteString)
+import           Prelude               hiding (length)
+import qualified Data.ByteString       as SBS
+import           Data.Monoid           (mappend)
+import qualified Data.ByteString.UTF8  as UTF8
+import           Data.ByteString.Utils (randomBS, xorBS)
+import           Data.Binary           (Binary(..))
+import           Data.Binary.Get       (getByteString)
+import           Data.Binary.Put       (putByteString)
 
 newtype Guid = Guid { bs :: SBS.ByteString }
   deriving (Eq, Ord, Read, Show)

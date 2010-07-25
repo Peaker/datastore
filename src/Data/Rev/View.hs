@@ -3,17 +3,17 @@ module Data.Rev.View
     (View(..), make, curVersion, move, store)
 where
 
-import Prelude hiding (lookup)
-import Control.Monad(liftM)
-import Data.Transaction(Transaction, Store(..))
-import qualified Data.Transaction as Transaction
-import Data.Rev.Version(Version)
-import Data.Rev.VersionMap(VersionMap)
+import           Prelude             hiding (lookup)
+import           Control.Monad       (liftM)
+import           Data.Transaction    (Transaction, Store(..))
+import qualified Data.Transaction    as Transaction
+import           Data.Rev.Version    (Version)
+import           Data.Rev.VersionMap (VersionMap)
 import qualified Data.Rev.VersionMap as VersionMap
-import Data.Rev.Branch(Branch)
-import qualified Data.Rev.Branch as Branch
-import Data.Rev.Change(Change)
-import qualified Data.Rev.Change as Change
+import           Data.Rev.Branch     (Branch)
+import qualified Data.Rev.Branch     as Branch
+import           Data.Rev.Change     (Change)
+import qualified Data.Rev.Change     as Change
 
 data View = View { cache :: VersionMap,
                    branch :: Branch }

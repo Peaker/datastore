@@ -4,13 +4,13 @@ module Data.Rev.Branch
     (Branch, new, move, curVersion, newVersion)
 where
 
-import Control.Monad(liftM)
+import           Control.Monad    (liftM)
 import qualified Data.Transaction as Transaction
-import Data.Transaction(Transaction)
-import Data.Binary(Binary)
-import Data.IRef(IRef)
-import Data.Rev.Change(Change)
-import Data.Rev.Version(Version)
+import           Data.Transaction (Transaction)
+import           Data.Binary      (Binary)
+import           Data.IRef        (IRef)
+import           Data.Rev.Change  (Change)
+import           Data.Rev.Version (Version)
 import qualified Data.Rev.Version as Version
 
 -- | A Branch is a mutable version ptr

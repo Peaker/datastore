@@ -5,17 +5,17 @@ module Db
      withCursor, nextKeyBS, nextKey, lookup, transaction, store)
 where
 
-import Control.Arrow(second)
-import Control.Exception(bracket)
-import Prelude hiding (lookup)
+import           Control.Arrow        (second)
+import           Control.Exception    (bracket)
+import           Prelude              hiding (lookup)
 import qualified Database.Berkeley.Db as Berkeley
-import Data.ByteString(ByteString)
-import Data.Binary(Binary)
-import Data.Binary.Utils(decodeS)
-import Data.Guid(Guid)
-import qualified Data.Guid as Guid
-import Data.Transaction(Store(..))
-import System.Directory(createDirectoryIfMissing)
+import           Data.ByteString      (ByteString)
+import           Data.Binary          (Binary)
+import           Data.Binary.Utils    (decodeS)
+import           Data.Guid            (Guid)
+import qualified Data.Guid            as Guid
+import           Data.Transaction     (Store(..))
+import           System.Directory     (createDirectoryIfMissing)
 
 data Db = Db {
   dbBerkeley :: Berkeley.Db,

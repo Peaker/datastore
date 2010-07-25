@@ -5,9 +5,9 @@ module Data.ContainerRef
     (ContainerRef, guidBase, unsafeFromGuid, anchor)
 where
 
-import Data.Binary(Binary)
-import Data.Guid(Guid)
-import qualified Data.Guid as Guid
+import           Data.Binary (Binary)
+import           Data.Guid   (Guid)
+import qualified Data.Guid   as Guid
 
 newtype ContainerRef a = ContainerRef { guidBase :: Guid }
   deriving (Eq, Ord, Binary, Read, Show)

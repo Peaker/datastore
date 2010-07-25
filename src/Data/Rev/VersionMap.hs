@@ -8,21 +8,21 @@ where
 -- | "current-version" values. This serves as a "cache" which is
 -- | redundant to the lists of changes stored in the version graph.
 
-import Prelude hiding (lookup)
-import Control.Monad(liftM, (<=<), when)
+import           Prelude           hiding (lookup)
+import           Control.Monad     (liftM, (<=<), when)
 import qualified Data.Record.Label as Label
-import Data.Guid(Guid)
-import Data.Binary(Binary)
-import qualified Data.Property as Property
-import Data.IRef(IRef)
-import qualified Data.IRef as IRef
-import qualified Data.Transaction as Transaction
-import Data.Transaction(Transaction)
-import qualified Data.Guid as Guid
-import Data.Rev.Change(Change)
-import qualified Data.Rev.Change as Change
-import Data.Rev.Version(Version)
-import qualified Data.Rev.Version as Version
+import           Data.Guid         (Guid)
+import           Data.Binary       (Binary)
+import qualified Data.Property     as Property
+import           Data.IRef         (IRef)
+import qualified Data.IRef         as IRef
+import qualified Data.Transaction  as Transaction
+import           Data.Transaction  (Transaction)
+import qualified Data.Guid         as Guid
+import           Data.Rev.Change   (Change)
+import qualified Data.Rev.Change   as Change
+import           Data.Rev.Version  (Version)
+import qualified Data.Rev.Version  as Version
 
 newtype VersionMapData = VersionMapData Version
   deriving (Binary, Eq, Ord, Show, Read)

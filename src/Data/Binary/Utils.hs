@@ -6,13 +6,13 @@ module Data.Binary.Utils
      put0, put1, put2, put3)
 where
 
-import Control.Monad(liftM, liftM2, liftM3)
-import qualified Data.ByteString as SBS
-import qualified Data.Binary as Binary
-import Data.ByteString.Utils(lazifyBS, strictifyBS)
-import Data.Binary(Binary(..))
-import Data.Binary.Get(Get)
-import Data.Binary.Put(Put)
+import           Control.Monad         (liftM, liftM2, liftM3)
+import qualified Data.ByteString       as SBS
+import qualified Data.Binary           as Binary
+import           Data.ByteString.Utils (lazifyBS, strictifyBS)
+import           Data.Binary           (Binary(..))
+import           Data.Binary.Get       (Get)
+import           Data.Binary.Put       (Put)
 
 decodeS :: Binary a => SBS.ByteString -> a
 decodeS = Binary.decode . lazifyBS

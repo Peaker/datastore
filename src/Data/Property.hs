@@ -6,8 +6,8 @@ module Data.Property(
     modify, modify_, pureModify)
 where
 
-import Control.Monad(liftM, (>=>))
-import Data.Record.Label((:->))
+import           Control.Monad     (liftM, (>=>))
+import           Data.Record.Label ((:->))
 import qualified Data.Record.Label as Label
 
 data Property m a = Property {

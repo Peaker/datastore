@@ -2,18 +2,18 @@
 
 module Main (main) where
 
-import Control.Monad(join)
-import Data.Transaction(Transaction)
-import qualified Data.Rev.View as View
-import qualified Data.Transaction as Transaction
-import qualified Data.Property as Property
+import           Control.Monad                   (join)
+import           Data.Transaction                (Transaction)
+import qualified Data.Rev.View                   as View
+import qualified Data.Transaction                as Transaction
+import qualified Data.Property                   as Property
 import qualified Db
-import System.IO(stdout, hPutStrLn, Handle)
+import           System.IO                       (stdout, hPutStrLn, Handle)
 import qualified Graphics.UI.VtyWidgets.TextEdit as TextEdit
-import qualified Editor.Data as Data
-import qualified Editor.Anchors as Anchors
-import Editor.Anchors(ViewTag, DBTag)
-import qualified Data.Record.Label as Label
+import qualified Editor.Data                     as Data
+import qualified Editor.Anchors                  as Anchors
+import           Editor.Anchors                  (ViewTag, DBTag)
+import qualified Data.Record.Label               as Label
 
 type Action = IO ()
 

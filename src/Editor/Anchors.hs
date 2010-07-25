@@ -9,25 +9,25 @@ module Editor.Anchors(
     viewStore, ViewTag)
 where
 
-import Control.Monad(liftM, unless)
-import Data.Binary(Binary)
-import Data.IRef(IRef)
-import qualified Data.IRef as IRef
-import qualified Data.Transaction as Transaction
-import Data.Transaction(Transaction, Store)
-import Data.Rev.Branch(Branch)
-import Data.Rev.VersionMap(VersionMap)
-import Data.Rev.View(View)
-import qualified Data.Rev.View as View
-import qualified Data.Rev.Branch as Branch
-import qualified Data.Rev.Version as Version
-import qualified Data.Rev.VersionMap as VersionMap
-import qualified Data.Property as Property
+import           Control.Monad                   (liftM, unless)
+import           Data.Binary                     (Binary)
+import           Data.IRef                       (IRef)
+import qualified Data.IRef                       as IRef
+import qualified Data.Transaction                as Transaction
+import           Data.Transaction                (Transaction, Store)
+import           Data.Rev.Branch                 (Branch)
+import           Data.Rev.VersionMap             (VersionMap)
+import           Data.Rev.View                   (View)
+import qualified Data.Rev.View                   as View
+import qualified Data.Rev.Branch                 as Branch
+import qualified Data.Rev.Version                as Version
+import qualified Data.Rev.VersionMap             as VersionMap
+import qualified Data.Property                   as Property
 import qualified Db
-import Db(Db)
-import Editor.Data(ITreeD, TreeD)
-import qualified Editor.Data as Data
-import qualified Graphics.UI.VtyWidgets.Grid as Grid
+import           Db                              (Db)
+import           Editor.Data                     (ITreeD, TreeD)
+import qualified Editor.Data                     as Data
+import qualified Graphics.UI.VtyWidgets.Grid     as Grid
 import qualified Graphics.UI.VtyWidgets.TextEdit as TextEdit
 
 data DBTag

@@ -6,11 +6,11 @@ module Data.Rev.Change
      Dir, objectKey, oldValue, newValue)
 where
 
-import Data.ByteString(ByteString)
-import Data.Binary(Binary(..))
-import Data.Binary.Utils(get3, put3)
-import Data.Record.Label((:->), mkLabels, label)
-import Data.Guid(Guid)
+import Data.ByteString   (ByteString)
+import Data.Binary       (Binary(..))
+import Data.Binary.Utils (get3, put3)
+import Data.Record.Label ((:->), mkLabels, label)
+import Data.Guid         (Guid)
 
 type Key = Guid
 type Value = ByteString

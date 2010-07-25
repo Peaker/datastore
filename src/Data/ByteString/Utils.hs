@@ -4,12 +4,12 @@ module Data.ByteString.Utils
     (lazifyBS, strictifyBS, randomBS, xorBS)
 where
 
-import Control.Monad(replicateM)
-import qualified Data.ByteString as SBS
+import           Control.Monad        (replicateM)
+import qualified Data.ByteString      as SBS
 import qualified Data.ByteString.Lazy as LBS
-import System.Random(randomIO)
+import           System.Random        (randomIO)
 import Data.Random.Instances()
-import Data.Bits(xor)
+import           Data.Bits            (xor)
 
 strictifyBS :: LBS.ByteString -> SBS.ByteString
 strictifyBS = SBS.concat . LBS.toChunks

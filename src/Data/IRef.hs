@@ -5,9 +5,9 @@ module Data.IRef
     (IRef, guid, unsafeFromGuid, anchor)
 where
 
-import Data.Binary(Binary)
-import Data.Guid(Guid)
-import qualified Data.Guid as Guid
+import           Data.Binary (Binary)
+import           Data.Guid   (Guid)
+import qualified Data.Guid   as Guid
 
 newtype IRef a = IRef {
   guid :: Guid

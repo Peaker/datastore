@@ -7,13 +7,13 @@ module Data.Rev.Version
      walkUp, walkDown, versionsBetween)
 where
 
-import Control.Monad(liftM, liftM2, join)
-import Data.Binary(Binary(..))
-import Data.Binary.Utils(get3, put3)
-import Data.IRef(IRef)
-import Data.Transaction(Transaction)
-import qualified Data.Transaction as Transaction
-import Data.Rev.Change(Change)
+import           Control.Monad     (liftM, liftM2, join)
+import           Data.Binary       (Binary(..))
+import           Data.Binary.Utils (get3, put3)
+import           Data.IRef         (IRef)
+import           Data.Transaction  (Transaction)
+import qualified Data.Transaction  as Transaction
+import           Data.Rev.Change   (Change)
 
 data VersionData = VersionData {
   depth :: Int,

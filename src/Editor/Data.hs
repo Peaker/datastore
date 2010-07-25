@@ -8,21 +8,21 @@ module Editor.Data(
     makeValue, makeNode, makeNodeRef, makeLeafRef)
 where
 
-import Prelude hiding ((.), id)
-import Control.Category((.))
-import Data.Binary(Binary(..))
-import Data.Binary.Utils(get3, put3)
-import Data.IRef(IRef)
-import Data.IRef.Tree(Tree(..), nodeValue, nodeChildrenRefs)
-import Data.Transaction(Transaction)
-import qualified Data.Transaction as Transaction
-import Data.Record.Label((:->), mkLabels, label)
-import qualified Data.Record.Label.Map as Label.Map
-import qualified Data.Record.Label.Maybe as Label.Maybe
-import qualified Graphics.UI.VtyWidgets.Grid as Grid
+import           Prelude                         hiding ((.), id)
+import           Control.Category                ((.))
+import           Data.Binary                     (Binary(..))
+import           Data.Binary.Utils               (get3, put3)
+import           Data.IRef                       (IRef)
+import           Data.IRef.Tree                  (Tree(..), nodeValue, nodeChildrenRefs)
+import           Data.Transaction                (Transaction)
+import qualified Data.Transaction                as Transaction
+import           Data.Record.Label               ((:->), mkLabels, label)
+import qualified Data.Record.Label.Map           as Label.Map
+import qualified Data.Record.Label.Maybe         as Label.Maybe
+import qualified Graphics.UI.VtyWidgets.Grid     as Grid
 import qualified Graphics.UI.VtyWidgets.TextEdit as TextEdit
-import Data.Map(Map)
-import qualified Data.Map as Map
+import           Data.Map                        (Map)
+import qualified Data.Map                        as Map
 
 data Data = Data {
   _gridModels :: Map String Grid.Model,

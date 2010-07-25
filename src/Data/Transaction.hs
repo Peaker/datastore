@@ -18,27 +18,27 @@ module Data.Transaction
      anchorContainer, anchorContainerDef)
 where
 
-import Prelude hiding (lookup)
-import Control.Applicative(Applicative)
-import Control.Monad(liftM)
-import Control.Monad.Trans.State.Strict(StateT, runStateT, get, modify)
-import Control.Monad.Trans.Reader(ReaderT, runReaderT, ask)
-import Control.Monad.Trans.Class(MonadTrans(..))
-import Data.ByteString.UTF8(fromString)
-import Data.Binary(Binary)
-import Data.Binary.Utils(encodeS, decodeS)
-import Data.IRef(IRef)
-import qualified Data.IRef as IRef
-import Data.ContainerRef(ContainerRef)
-import qualified Data.ContainerRef as ContainerRef
-import Data.Guid(Guid)
-import qualified Data.Guid as Guid
-import qualified Data.Property as Property
-import Data.Monoid(mempty)
-import Data.Maybe(isJust)
-import Data.ByteString(ByteString)
-import qualified Data.Map as Map
-import Data.Map(Map)
+import           Prelude                          hiding (lookup)
+import           Control.Applicative              (Applicative)
+import           Control.Monad                    (liftM)
+import           Control.Monad.Trans.State.Strict (StateT, runStateT, get, modify)
+import           Control.Monad.Trans.Reader       (ReaderT, runReaderT, ask)
+import           Control.Monad.Trans.Class        (MonadTrans(..))
+import           Data.ByteString.UTF8             (fromString)
+import           Data.Binary                      (Binary)
+import           Data.Binary.Utils                (encodeS, decodeS)
+import           Data.IRef                        (IRef)
+import qualified Data.IRef                        as IRef
+import           Data.ContainerRef                (ContainerRef)
+import qualified Data.ContainerRef                as ContainerRef
+import           Data.Guid                        (Guid)
+import qualified Data.Guid                        as Guid
+import qualified Data.Property                    as Property
+import           Data.Monoid                      (mempty)
+import           Data.Maybe                       (isJust)
+import           Data.ByteString                  (ByteString)
+import qualified Data.Map                         as Map
+import           Data.Map                         (Map)
 
 type Property t m = Property.Property (Transaction t m)
 type Container k t m a = k -> Property t m a

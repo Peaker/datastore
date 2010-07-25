@@ -3,45 +3,45 @@
 
 module Main(main) where
 
-import Prelude hiding ((.))
-import Control.Arrow(first)
-import Control.Applicative(pure)
-import Control.Category((.))
-import Control.Monad(when, liftM)
-import Data.List.Utils(safeIndex)
-import Data.IRef(IRef)
-import qualified Data.Transaction as Transaction
-import Data.Transaction(Transaction, Store)
-import Data.Property(composeLabel)
-import qualified Data.Property as Property
-import qualified Data.Rev.View as View
-import Data.Rev.View(View)
-import qualified Data.Rev.Version as Version
-import qualified Data.Rev.Branch as Branch
-import Data.Monoid(Monoid(..))
-import Data.Maybe(fromMaybe, fromJust)
-import Data.Vector.Rect(Rect(Rect))
-import Data.Vector.Vector2(Vector2(..))
-import qualified Data.Vector.Vector2 as Vector2
-import qualified Graphics.Vty as Vty
-import qualified Graphics.UI.VtyWidgets.Align as Align
-import qualified Graphics.UI.VtyWidgets.TextView as TextView
-import qualified Graphics.UI.VtyWidgets.TextEdit as TextEdit
-import qualified Graphics.UI.VtyWidgets.Grid as Grid
-import qualified Graphics.UI.VtyWidgets.Spacer as Spacer
-import qualified Graphics.UI.VtyWidgets.Widget as Widget
-import qualified Graphics.UI.VtyWidgets.Keymap as Keymap
+import           Prelude                          hiding ((.))
+import           Control.Arrow                    (first)
+import           Control.Applicative              (pure)
+import           Control.Category                 ((.))
+import           Control.Monad                    (when, liftM)
+import           Data.List.Utils                  (safeIndex)
+import           Data.IRef                        (IRef)
+import qualified Data.Transaction                 as Transaction
+import           Data.Transaction                 (Transaction, Store)
+import           Data.Property                    (composeLabel)
+import qualified Data.Property                    as Property
+import qualified Data.Rev.View                    as View
+import           Data.Rev.View                    (View)
+import qualified Data.Rev.Version                 as Version
+import qualified Data.Rev.Branch                  as Branch
+import           Data.Monoid                      (Monoid(..))
+import           Data.Maybe                       (fromMaybe, fromJust)
+import           Data.Vector.Rect                 (Rect(Rect))
+import           Data.Vector.Vector2              (Vector2(..))
+import qualified Data.Vector.Vector2              as Vector2
+import qualified Graphics.Vty                     as Vty
+import qualified Graphics.UI.VtyWidgets.Align     as Align
+import qualified Graphics.UI.VtyWidgets.TextView  as TextView
+import qualified Graphics.UI.VtyWidgets.TextEdit  as TextEdit
+import qualified Graphics.UI.VtyWidgets.Grid      as Grid
+import qualified Graphics.UI.VtyWidgets.Spacer    as Spacer
+import qualified Graphics.UI.VtyWidgets.Widget    as Widget
+import qualified Graphics.UI.VtyWidgets.Keymap    as Keymap
 import qualified Graphics.UI.VtyWidgets.TermImage as TermImage
-import Graphics.UI.VtyWidgets.Display(Display)
+import           Graphics.UI.VtyWidgets.Display   (Display)
 import qualified Graphics.UI.VtyWidgets.SizeRange as SizeRange
-import Graphics.UI.VtyWidgets.Widget(Widget)
-import qualified Graphics.UI.VtyWidgets.Run as Run
+import           Graphics.UI.VtyWidgets.Widget    (Widget)
+import qualified Graphics.UI.VtyWidgets.Run       as Run
 import qualified Db
-import Editor.Data(ITreeD, TreeD)
-import qualified Editor.Data as Data
-import qualified Editor.Anchors as Anchors
-import Editor.Anchors(DBTag, ViewTag)
-import qualified Editor.Config as Config
+import           Editor.Data                      (ITreeD, TreeD)
+import qualified Editor.Data                      as Data
+import qualified Editor.Anchors                   as Anchors
+import           Editor.Anchors                   (DBTag, ViewTag)
+import qualified Editor.Config                    as Config
 
 widthSpace :: Int -> Display a
 widthSpace width = Spacer.make . SizeRange.fixedSize $ Vector2 width 0
