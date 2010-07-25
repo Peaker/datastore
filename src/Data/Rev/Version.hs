@@ -43,19 +43,23 @@ newVersion version newChanges = do
     newChanges
 
 mostRecentAncestor :: Monad m => Version -> Version -> Transaction t m Version
-mostRecentAncestor = mra
+mostRecentAncestor aVersion bVersion
+  | aVersion == bVersion  = return aVersion
+  | otherwise             = do
+    VersionData aDepth aMbParentRef _aChanges <- versionData aVersion
+    VersionData bDepth bMbParentRef _bChanges <- versionData bVersion
+    case compare aDepth bDepth of
+      LT -> (aVersion `mostRecentAncestor`) =<< upToDepth aDepth bVersion
+      GT -> (`mostRecentAncestor` bVersion) =<< upToDepth bDepth aVersion
+      EQ -> if aDepth == 0
+            then fail "Two versions without common ancestor given"
+            else join $ liftM2 mostRecentAncestor (getParent aMbParentRef) (getParent bMbParentRef)
   where
-    mra aVersion bVersion
-      | aVersion == bVersion  = return aVersion
-      | otherwise             = do
-        VersionData aDepth aMbParentRef _aChanges <- versionData aVersion
-        VersionData bDepth bMbParentRef _bChanges <- versionData bVersion
-        case compare aDepth bDepth of
-          LT ->      mra aVersion =<< getParent bMbParentRef
-          GT -> flip mra bVersion =<< getParent aMbParentRef
-          EQ -> if aDepth == 0
-                then fail "Two versions without common ancestor given"
-                else join $ liftM2 mra (getParent aMbParentRef) (getParent bMbParentRef)
+    upToDepth depthToReach version = do
+      VersionData curDepth curMbParentRef _curChanges <- versionData version
+      if curDepth > depthToReach
+        then upToDepth depthToReach =<< getParent curMbParentRef
+        else return version
     getParent = maybe (fail "Non-0 depth must have a parent") return
 
 walkUp :: Monad m => (VersionData -> Transaction t m ()) -> Version -> Version -> Transaction t m ()
