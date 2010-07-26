@@ -1,10 +1,6 @@
-* Phantom type for read-only transactions vs write transactions
+--- XML UI ----------------------------------
 
-  * View does a "sync" *write* transaction on DB for every read, this
-    means that all transactions above the view are Write transactions
-
-    *? Branches<->Views bidirectional link so Views are updated when
-       Branches are moved?
+* Attributes, text leaf GUI widgets
 
 --- Version control -------------------------
 
@@ -44,6 +40,9 @@ Fix conflicts
 
 * Reflog branch (see TODO in there)
 
+* Phantom type for read-only transactions vs write transactions
+  * Difficult!
+
 * Pure immutable key/value store (add only) interface?
 
   * IRef contains a safe hash or a copy of the value, depending on
@@ -60,12 +59,6 @@ Fix conflicts
 
   * Revision control (Data.Rev.Change and Data.Rev.VersionMap) can use
     pure IRefs for object values
-
---- XML UI ----------------------------------
-
-* Attributes, text leaf GUI widgets
-
-* Max-depth under which you jump to a new root
 
 --- GC ------------------------
 

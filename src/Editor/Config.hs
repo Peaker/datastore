@@ -1,6 +1,7 @@
 {-# OPTIONS -fno-warn-missing-signatures #-}
 
 module Editor.Config(
+    maxDepth,
     quitKey, undoKey, rootKey, appendChildKey, delChildKey,
     setFocalPointKey, cutKey, pasteKey,
     makeBranchKey, delBranchKey,
@@ -8,6 +9,9 @@ module Editor.Config(
 where
 
 import qualified Graphics.Vty as Vty
+
+maxDepth :: Int
+maxDepth = 10
 
 quitKey = ([Vty.MCtrl], Vty.KASCII 'q')
 undoKey = ([Vty.MCtrl], Vty.KASCII 'z')

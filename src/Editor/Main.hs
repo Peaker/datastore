@@ -113,13 +113,14 @@ makeChoiceWidget keys gridModelRef = do
     items = map snd keys
 
 makeChildGrid :: Monad m =>
+                 Int ->
                  Transaction.Property ViewTag m [ITreeD] ->
                  Transaction.Property ViewTag m Grid.Model ->
                  Transaction.Property ViewTag m Grid.Model ->
                  Transaction.Property ViewTag m [ITreeD] ->
                  Transaction ViewTag m (Widget (Transaction ViewTag m ()))
-makeChildGrid clipboardRef outerGridModelRef childrenGridModelRef childrenIRefsRef = do
-  childItems <- mapM (makeTreeEdit clipboardRef) =<< Property.get childrenIRefsRef
+makeChildGrid depth clipboardRef outerGridModelRef childrenGridModelRef childrenIRefsRef = do
+  childItems <- mapM (makeTreeEdit (depth+1) clipboardRef) =<< Property.get childrenIRefsRef
   curChildIndex <- getChildIndex . length $ childItems
   childGrid <- makeGrid (map (: []) childItems) childrenGridModelRef
   return .
@@ -161,78 +162,80 @@ focusableTextView =
       TermImage.rect (Rect (pure 0) size) (first (`Vty.with_back_color` Vty.blue))
 
 makeTreeEdit :: Monad m =>
-                Transaction.Property ViewTag m [ITreeD] ->
+                Int -> Transaction.Property ViewTag m [ITreeD] ->
                 IRef TreeD ->
                 Transaction ViewTag m (Widget (Transaction ViewTag m ()))
-makeTreeEdit clipboardRef treeIRef = do
-  valueEdit <- (Widget.atKeymap . Keymap.removeKeys)
-               [Config.expandKey, Config.collapseKey] `liftM`
-               makeTextEdit 1 TextEdit.defaultAttr TextEdit.editingAttr
-               valueTextEditModelRef
-  isExpanded <- Property.get isExpandedRef
-  lowRow <- if isExpanded
-            then ((:[]) . (:[]) .
-                  Widget.weakerKeys moveToParentKeymap) `liftM`
-                 makeChildGrid clipboardRef outerGridModelRef childrenGridModelRef childrenIRefsRef
-            else return []
-  cValueEdit <- makeGrid [[collapser isExpanded,
-                           Widget.simpleDisplay $ widthSpace 1,
-                           valueEdit]] treeNodeGridModelRef
-  outerGrid <- makeGrid ([cValueEdit] : lowRow) outerGridModelRef
-  clipboard <- Property.get clipboardRef
-  let keymap =
-        mconcat [
-          pasteKeymap clipboard,
-          appendNewNodeKeymap,
-          setRootKeymap,
-          expandCollapseKeymap isExpanded
-          ]
-  return . Widget.weakerKeys keymap $ outerGrid
-  where
-    treeRef = Transaction.fromIRef treeIRef
-    valueRef = Data.nodeValue `composeLabel` treeRef
-    gridModelsContainer def k = Data.gridModel def k `composeLabel` valueRef
-    valueTextEditModelRef = Data.textEditModel `composeLabel` valueRef
-    childrenIRefsRef = Data.nodeChildrenRefs `composeLabel` treeRef
-    isExpandedRef = Data.isExpanded `composeLabel` valueRef
-    outerGridModelRef = gridModelsContainer Grid.initModel "outer"
-    treeNodeGridModelRef = gridModelsContainer (Grid.Model $ Vector2 2 0) "treeNode"
-    childrenGridModelRef = gridModelsContainer Grid.initModel "children"
-    expandCollapseKeymap isExpanded =
-      if isExpanded
-      then Keymap.simpleton "Collapse" Config.collapseKey collapse
-      else Keymap.simpleton "Expand" Config.expandKey expand
-    collapse = Property.set isExpandedRef False
-    expand = Property.set isExpandedRef True
-    collapser isExpanded =
-      Widget.simpleDisplay .
-      TextView.make Vty.def_attr $
-      if isExpanded
-      then "[-]"
-      else "[+]"
-    pasteKeymap [] = mempty
-    pasteKeymap (cbChildRef:xs) =
-      Keymap.simpleton "Paste" Config.pasteKey $ do
-        appendChild cbChildRef
-        Property.set clipboardRef xs
-    appendNewNodeKeymap = Keymap.simpleton "Append new child node"
-                            Config.appendChildKey $ appendChild =<< Data.makeLeafRef ""
-    moveToParentKeymap = Keymap.simpleton "Move to parent" Config.moveToParentKey $
-                         Property.set outerGridModelRef (yGridCursor 0)
-    setRootKeymap =
-      Keymap.simpleton "Set focal point" Config.setFocalPointKey $
-      Property.set Anchors.focalPointIRef treeIRef
-
-    appendChild newRef = do
-      appendGridChild childrenGridModelRef childrenIRefsRef newRef
-      Property.set outerGridModelRef $ yGridCursor 1
+makeTreeEdit depth clipboardRef treeIRef
+  | depth >= Config.maxDepth =
+    return $ Widget.strongerKeys goInKeymap $ focusableTextView "[Go deeper]"
+  | otherwise = do
+    valueEdit <- (Widget.atKeymap . Keymap.removeKeys)
+                 [Config.expandKey, Config.collapseKey] `liftM`
+                 makeTextEdit 1 TextEdit.defaultAttr TextEdit.editingAttr
+                 valueTextEditModelRef
+    isExpanded <- Property.get isExpandedRef
+    lowRow <- if isExpanded
+              then ((:[]) . (:[]) .
+                    Widget.weakerKeys moveToParentKeymap) `liftM`
+                   makeChildGrid depth clipboardRef outerGridModelRef childrenGridModelRef childrenIRefsRef
+              else return []
+    cValueEdit <- makeGrid [[collapser isExpanded,
+                             Widget.simpleDisplay $ widthSpace 1,
+                             valueEdit]] treeNodeGridModelRef
+    outerGrid <- makeGrid ([cValueEdit] : lowRow) outerGridModelRef
+    clipboard <- Property.get clipboardRef
+    let keymap =
+          mconcat [
+            pasteKeymap clipboard,
+            appendNewNodeKeymap,
+            setRootKeymap,
+            expandCollapseKeymap isExpanded
+            ]
+    return . Widget.weakerKeys keymap $ outerGrid
+    where
+      goInKeymap = Keymap.simpleton "Go deeper" Config.actionKey setFocalPoint
+      treeRef = Transaction.fromIRef treeIRef
+      valueRef = Data.nodeValue `composeLabel` treeRef
+      gridModelsContainer def k = Data.gridModel def k `composeLabel` valueRef
+      valueTextEditModelRef = Data.textEditModel `composeLabel` valueRef
+      childrenIRefsRef = Data.nodeChildrenRefs `composeLabel` treeRef
+      isExpandedRef = Data.isExpanded `composeLabel` valueRef
+      outerGridModelRef = gridModelsContainer Grid.initModel "outer"
+      treeNodeGridModelRef = gridModelsContainer (Grid.Model $ Vector2 2 0) "treeNode"
+      childrenGridModelRef = gridModelsContainer Grid.initModel "children"
+      expandCollapseKeymap isExpanded =
+        if isExpanded
+        then Keymap.simpleton "Collapse" Config.collapseKey collapse
+        else Keymap.simpleton "Expand" Config.expandKey expand
+      collapse = Property.set isExpandedRef False
+      expand = Property.set isExpandedRef True
+      collapser isExpanded =
+        Widget.simpleDisplay .
+        TextView.make Vty.def_attr $
+        if isExpanded
+        then "[-]"
+        else "[+]"
+      pasteKeymap [] = mempty
+      pasteKeymap (cbChildRef:xs) =
+        Keymap.simpleton "Paste" Config.pasteKey $ do
+          appendChild cbChildRef
+          Property.set clipboardRef xs
+      appendNewNodeKeymap = Keymap.simpleton "Append new child node"
+                              Config.appendChildKey $ appendChild =<< Data.makeLeafRef ""
+      moveToParentKeymap = Keymap.simpleton "Move to parent" Config.moveToParentKey $
+                           Property.set outerGridModelRef (yGridCursor 0)
+      setRootKeymap = Keymap.simpleton "Set focal point" Config.setFocalPointKey $ setFocalPoint
+      setFocalPoint = Property.set Anchors.focalPointIRef treeIRef
+      appendChild newRef = do
+        appendGridChild childrenGridModelRef childrenIRefsRef newRef
+        Property.set outerGridModelRef $ yGridCursor 1
 
 makeEditWidget :: Monad m =>
                   Transaction.Property ViewTag m [ITreeD] ->
                   Transaction ViewTag m (Widget (Transaction ViewTag m ()))
 makeEditWidget clipboardRef = do
   focalPointIRef <- Property.get focalPointIRefRef
-  treeEdit <- makeTreeEdit clipboardRef focalPointIRef
+  treeEdit <- makeTreeEdit 0 clipboardRef focalPointIRef
   widget <-
     if not $ isAtRoot focalPointIRef
     then makeGrid [[goUp], [treeEdit]] (Anchors.viewGridsAnchor "goRoot")
@@ -272,7 +275,7 @@ makeWidgetForView :: Monad m => View -> Transaction DBTag m (Widget (Transaction
 makeWidgetForView view = do
   versionData <- Version.versionData =<< View.curVersion view
   widget <- widgetDownTransaction (Anchors.viewStore view) $
-              makeEditWidget Anchors.clipboard
+            makeEditWidget Anchors.clipboard
   return $ Widget.strongerKeys (keymaps versionData) widget
   where
     keymaps versionData = undoKeymap versionData `mappend` makeBranchKeymap
