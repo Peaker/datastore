@@ -22,12 +22,11 @@ import           Data.Monoid                      (Monoid(..))
 import           Data.Maybe                       (fromMaybe, fromJust)
 import           Data.Vector.Rect                 (Rect(Rect))
 import           Data.Vector.Vector2              (Vector2(..))
-import qualified Data.Vector.Vector2              as Vector2
 import qualified Graphics.Vty                     as Vty
 import qualified Graphics.UI.VtyWidgets.Align     as Align
 import qualified Graphics.UI.VtyWidgets.TextView  as TextView
 import qualified Graphics.UI.VtyWidgets.TextEdit  as TextEdit
-import qualified Graphics.UI.VtyWidgets.Grid      as Grid
+import qualified Graphics.UI.VtyWidgets.Box       as Box
 import qualified Graphics.UI.VtyWidgets.Spacer    as Spacer
 import qualified Graphics.UI.VtyWidgets.Widget    as Widget
 import qualified Graphics.UI.VtyWidgets.Keymap    as Keymap
@@ -47,31 +46,27 @@ widthSpace :: Int -> Display a
 widthSpace width = Spacer.make . SizeRange.fixedSize $ Vector2 width 0
 
 indent :: Int -> Display a -> Display a
-indent width disp = Grid.makeView [[widthSpace width, disp]]
+indent width disp = Box.makeView Box.Horizontal [widthSpace width, disp]
 
-yGridCursor :: Int -> Grid.Model
-yGridCursor = Grid.Model . Vector2 0
-
-appendGridChild :: Monad m =>
-                   Transaction.Property t m Grid.Model ->
+appendBoxChild :: Monad m =>
+                   Transaction.Property t m Box.Model ->
                    Transaction.Property t m [a] ->
                    a -> Transaction t m ()
-appendGridChild gridModelRef valuesRef value = do
+appendBoxChild boxModelRef valuesRef value = do
   values <- Property.get valuesRef
   Property.set valuesRef (values ++ [value])
-  Property.set gridModelRef . yGridCursor $ length values
+  Property.set boxModelRef . Box.Model . length $ values
 
 removeAt :: Int -> [a] -> [a]
 removeAt n xs = take n xs ++ drop (n+1) xs
 
 popCurChild :: Monad m =>
-               Transaction.Property t m Grid.Model ->
+               Transaction.Property t m Box.Model ->
                Transaction.Property t m [a] ->
                Transaction t m (Maybe a)
-popCurChild gridModelRef valuesRef = do
+popCurChild boxModelRef valuesRef = do
   values <- Property.get valuesRef
-  curIndex <- (Vector2.snd . Grid.modelCursor) `liftM`
-              Property.get gridModelRef
+  curIndex <- Box.modelCursor `liftM` Property.get boxModelRef
   let value = curIndex `safeIndex` values
   maybe (return ()) (delChild curIndex values) value
   return value
@@ -79,15 +74,16 @@ popCurChild gridModelRef valuesRef = do
     delChild curIndex values _child = do
       Property.set valuesRef (curIndex `removeAt` values)
       when (curIndex >= length values - 1) .
-        Property.pureModify gridModelRef . Grid.inModel . Vector2.second $ subtract 1
+        Property.pureModify boxModelRef . Box.inModel $ subtract 1
 
-makeGrid :: Monad m =>
-            [[Widget (Transaction t m ())]] ->
-            Transaction.Property t m Grid.Model ->
-            Transaction t m (Widget (Transaction t m ()))
-makeGrid rows gridModelRef =
-  Grid.make (Property.set gridModelRef) rows `liftM`
-  Property.get gridModelRef
+makeBox :: Monad m =>
+           Box.Orientation ->
+           [Widget (Transaction t m ())] ->
+           Transaction.Property t m Box.Model ->
+           Transaction t m (Widget (Transaction t m ()))
+makeBox orientation rows boxModelRef =
+  Box.make orientation (Property.set boxModelRef) rows `liftM`
+  Property.get boxModelRef
 
 makeTextEdit :: Monad m => Int -> Vty.Attr -> Vty.Attr ->
                 Transaction.Property t m TextEdit.Model ->
@@ -98,38 +94,37 @@ makeTextEdit maxLines defAttr editAttr textEditModelRef =
   Property.get textEditModelRef
 
 makeChoiceWidget :: Monad m =>
+                    Box.Orientation ->
                     [(Widget (Transaction t m ()), k)] ->
-                    Transaction.Property t m Grid.Model ->
+                    Transaction.Property t m Box.Model ->
                     Transaction t m (Widget (Transaction t m ()), k)
-makeChoiceWidget keys gridModelRef = do
-  widget <- makeGrid rows gridModelRef
-  itemIndex <- (Vector2.snd .
-                Grid.modelCursor) `liftM` Property.get gridModelRef
+makeChoiceWidget orientation keys boxModelRef = do
+  widget <- makeBox orientation widgets boxModelRef
+  itemIndex <- Box.modelCursor `liftM` Property.get boxModelRef
   return (widget, items !! min maxIndex itemIndex)
   where
     maxIndex = length items - 1
-    rows = map (: []) widgets
     widgets = map fst keys
     items = map snd keys
 
-makeChildGrid :: Monad m =>
+makeChildBox :: Monad m =>
                  Int ->
                  Transaction.Property ViewTag m [ITreeD] ->
-                 Transaction.Property ViewTag m Grid.Model ->
-                 Transaction.Property ViewTag m Grid.Model ->
+                 Transaction.Property ViewTag m Box.Model ->
+                 Transaction.Property ViewTag m Box.Model ->
                  Transaction.Property ViewTag m [ITreeD] ->
                  Transaction ViewTag m (Widget (Transaction ViewTag m ()))
-makeChildGrid depth clipboardRef outerGridModelRef childrenGridModelRef childrenIRefsRef = do
+makeChildBox depth clipboardRef outerBoxModelRef childrenBoxModelRef childrenIRefsRef = do
   childItems <- mapM (makeTreeEdit (depth+1) clipboardRef) =<< Property.get childrenIRefsRef
   curChildIndex <- getChildIndex . length $ childItems
-  childGrid <- makeGrid (map (: []) childItems) childrenGridModelRef
+  childBox <- makeBox Box.Vertical childItems childrenBoxModelRef
   return .
     Widget.weakerKeys
     (mappend
      delNodeKeymap cutNodeKeymap
      curChildIndex) .
     Widget.atDisplay (indent 5) $
-    childGrid
+    childBox
   where
     cutNodeKeymap = fromMaybe mempty .
                     liftM (Keymap.simpleton "Cut node" Config.cutKey . cutChild)
@@ -142,9 +137,9 @@ makeChildGrid depth clipboardRef outerGridModelRef childrenGridModelRef children
     delChild index = do
       Property.pureModify childrenIRefsRef $ removeAt index
       isEmpty <- null `liftM` Property.get childrenIRefsRef
-      when isEmpty . Property.set outerGridModelRef $ yGridCursor 0
-    getChildIndex count = (validateIndex count . Vector2.snd . Grid.modelCursor) `liftM`
-                          Property.get childrenGridModelRef
+      when isEmpty . Property.set outerBoxModelRef . Box.Model $ 0
+    getChildIndex count = (validateIndex count . Box.modelCursor) `liftM`
+                          Property.get childrenBoxModelRef
     validateIndex count index
       | 0 <= index && index < count = Just index
       | otherwise = Nothing
@@ -175,14 +170,16 @@ makeTreeEdit depth clipboardRef treeIRef
                  valueTextEditModelRef
     isExpanded <- Property.get isExpandedRef
     lowRow <- if isExpanded
-              then ((:[]) . (:[]) .
+              then ((:[]) .
                     Widget.weakerKeys moveToParentKeymap) `liftM`
-                   makeChildGrid depth clipboardRef outerGridModelRef childrenGridModelRef childrenIRefsRef
+                   makeChildBox depth clipboardRef outerBoxModelRef childrenBoxModelRef childrenIRefsRef
               else return []
-    cValueEdit <- makeGrid [[collapser isExpanded,
-                             Widget.simpleDisplay $ widthSpace 1,
-                             valueEdit]] treeNodeGridModelRef
-    outerGrid <- makeGrid ([cValueEdit] : lowRow) outerGridModelRef
+    cValueEdit <- makeBox Box.Horizontal
+                  [collapser isExpanded,
+                   Widget.simpleDisplay $ widthSpace 1,
+                   valueEdit]
+                  (treeNodeBoxModelRef 2) -- 2 points to valueEdit
+    outerBox <- makeBox Box.Vertical (cValueEdit : lowRow) outerBoxModelRef
     clipboard <- Property.get clipboardRef
     let keymap =
           mconcat [
@@ -191,18 +188,18 @@ makeTreeEdit depth clipboardRef treeIRef
             setRootKeymap,
             expandCollapseKeymap isExpanded
             ]
-    return . Widget.weakerKeys keymap $ outerGrid
+    return . Widget.weakerKeys keymap $ outerBox
     where
       goInKeymap = Keymap.simpleton "Go deeper" Config.actionKey setFocalPoint
       treeRef = Transaction.fromIRef treeIRef
       valueRef = Data.nodeValue `composeLabel` treeRef
-      gridModelsContainer def k = Data.gridModel def k `composeLabel` valueRef
+      boxModelsContainer def k = Data.boxModel def k `composeLabel` valueRef
       valueTextEditModelRef = Data.textEditModel `composeLabel` valueRef
       childrenIRefsRef = Data.nodeChildrenRefs `composeLabel` treeRef
       isExpandedRef = Data.isExpanded `composeLabel` valueRef
-      outerGridModelRef = gridModelsContainer Grid.initModel "outer"
-      treeNodeGridModelRef = gridModelsContainer (Grid.Model $ Vector2 2 0) "treeNode"
-      childrenGridModelRef = gridModelsContainer Grid.initModel "children"
+      outerBoxModelRef = boxModelsContainer Box.initModel "outer"
+      treeNodeBoxModelRef initValue = boxModelsContainer (Box.Model initValue) "treeNode"
+      childrenBoxModelRef = boxModelsContainer Box.initModel "children"
       expandCollapseKeymap isExpanded =
         if isExpanded
         then Keymap.simpleton "Collapse" Config.collapseKey collapse
@@ -222,13 +219,13 @@ makeTreeEdit depth clipboardRef treeIRef
           Property.set clipboardRef xs
       appendNewNodeKeymap = Keymap.simpleton "Append new child node"
                               Config.appendChildKey $ appendChild =<< Data.makeLeafRef ""
-      moveToParentKeymap = Keymap.simpleton "Move to parent" Config.moveToParentKey $
-                           Property.set outerGridModelRef (yGridCursor 0)
+      moveToParentKeymap = Keymap.simpleton "Move to parent" Config.moveToParentKey .
+                           Property.set outerBoxModelRef $ Box.Model 0
       setRootKeymap = Keymap.simpleton "Set focal point" Config.setFocalPointKey $ setFocalPoint
       setFocalPoint = Property.set Anchors.focalPointIRef treeIRef
       appendChild newRef = do
-        appendGridChild childrenGridModelRef childrenIRefsRef newRef
-        Property.set outerGridModelRef $ yGridCursor 1
+        appendBoxChild childrenBoxModelRef childrenIRefsRef newRef
+        Property.set outerBoxModelRef $ Box.Model 1
 
 makeEditWidget :: Monad m =>
                   Transaction.Property ViewTag m [ITreeD] ->
@@ -238,7 +235,7 @@ makeEditWidget clipboardRef = do
   treeEdit <- makeTreeEdit 0 clipboardRef focalPointIRef
   widget <-
     if not $ isAtRoot focalPointIRef
-    then makeGrid [[goUp], [treeEdit]] (Anchors.viewGridsAnchor "goRoot")
+    then makeBox Box.Vertical [goUp, treeEdit] (Anchors.viewBoxsAnchor "goRoot")
     else return treeEdit
   return .
     Widget.strongerKeys (goRootKeymap focalPointIRef) $
@@ -266,8 +263,8 @@ widgetDownTransaction store = runTrans . (liftM . fmap) runTrans
   where
     runTrans = Transaction.run store
 
-branchSelectorGridModel :: Monad m => Transaction.Property DBTag m Grid.Model
-branchSelectorGridModel = Anchors.dbGridsAnchor "branchSelector"
+branchSelectorBoxModel :: Monad m => Transaction.Property DBTag m Box.Model
+branchSelectorBoxModel = Anchors.dbBoxsAnchor "branchSelector"
 
 -- Apply the transactions to the given View and convert them to
 -- transactions on a DB
@@ -284,7 +281,7 @@ makeWidgetForView view = do
       branch <- Branch.new =<< View.curVersion view
       textEditModelIRef <- Transaction.newIRef $ TextEdit.initModel "New view"
       let viewPair = (textEditModelIRef, branch)
-      appendGridChild branchSelectorGridModel Anchors.branches viewPair
+      appendBoxChild branchSelectorBoxModel Anchors.branches viewPair
     undoKeymap versionData =
         if Version.depth versionData > 1
         then Keymap.simpleton "Undo" Config.undoKey .
@@ -303,15 +300,15 @@ main = Db.withDb "/tmp/db.db" $ runDbStore . Anchors.dbStore
       view <- Property.get Anchors.view
       branches <- Property.get Anchors.branches
       pairs <- mapM pair branches
-      (branchSelector, branch) <- makeChoiceWidget pairs branchSelectorGridModel
+      (branchSelector, branch) <- makeChoiceWidget Box.Vertical pairs branchSelectorBoxModel
       View.setBranch view branch
       viewEdit <- Widget.strongerKeys quitKeymap
                   `liftM` makeWidgetForView view
-      makeGrid
-        [[viewEdit,
-          Widget.simpleDisplay Spacer.makeHorizontal,
-          Widget.strongerKeys (delBranchKeymap branches) branchSelector]] $
-        Anchors.dbGridsAnchor "main"
+      makeBox Box.Horizontal
+        [viewEdit,
+         Widget.simpleDisplay Spacer.makeHorizontal,
+         Widget.strongerKeys (delBranchKeymap branches) branchSelector] $
+        Anchors.dbBoxsAnchor "main"
 
     pair (textEditModelIRef, version) = do
       textEdit <- simpleTextEdit . Transaction.fromIRef $ textEditModelIRef
@@ -322,7 +319,7 @@ main = Db.withDb "/tmp/db.db" $ runDbStore . Anchors.dbStore
     quitKeymap = Keymap.simpleton "Quit" Config.quitKey . fail $ "Quit"
 
     deleteCurBranch = do
-      _ <- popCurChild branchSelectorGridModel Anchors.branches
+      _ <- popCurChild branchSelectorBoxModel Anchors.branches
       return ()
 
     simpleTextEdit =

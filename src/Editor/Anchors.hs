@@ -3,7 +3,7 @@
 module Editor.Anchors(
     clipboard, root, rootIRef,
     focalPointIRef, branches, view,
-    viewGridsAnchor, dbGridsAnchor,
+    viewBoxsAnchor, dbBoxsAnchor,
     initDB,
     dbStore, DBTag,
     viewStore, ViewTag)
@@ -25,7 +25,7 @@ import qualified Db
 import           Db                              (Db)
 import           Editor.Data                     (ITreeD, TreeD)
 import qualified Editor.Data                     as Data
-import qualified Graphics.UI.VtyWidgets.Grid     as Grid
+import qualified Graphics.UI.VtyWidgets.Box      as Box
 import qualified Graphics.UI.VtyWidgets.TextEdit as TextEdit
 
 data DBTag
@@ -48,14 +48,14 @@ root = Transaction.fromIRef rootIRef
 focalPointIRef :: Monad m => Transaction.Property ViewTag m ITreeD
 focalPointIRef = Transaction.anchorRefDef "focalPoint" rootIRef
 
-gridsAnchor :: Monad m => String -> String -> Transaction.Property anyTag m Grid.Model
-gridsAnchor name = Transaction.containerStr . Transaction.anchorContainerDef name $ Grid.initModel
+boxsAnchor :: Monad m => String -> String -> Transaction.Property anyTag m Box.Model
+boxsAnchor name = Transaction.containerStr . Transaction.anchorContainerDef name $ Box.initModel
 
-viewGridsAnchor :: Monad m => String -> Transaction.Property ViewTag m Grid.Model
-viewGridsAnchor = gridsAnchor "GUI.grids(v)"
+viewBoxsAnchor :: Monad m => String -> Transaction.Property ViewTag m Box.Model
+viewBoxsAnchor = boxsAnchor "GUI.box(v)"
 
-dbGridsAnchor :: Monad m => String -> Transaction.Property DBTag m Grid.Model
-dbGridsAnchor = gridsAnchor "GUI.grids(d)"
+dbBoxsAnchor :: Monad m => String -> Transaction.Property DBTag m Box.Model
+dbBoxsAnchor = boxsAnchor "GUI.box(d)"
 
 branchesIRef :: IRef [(IRef TextEdit.Model, Branch)]
 branchesIRef = IRef.anchor "branches"

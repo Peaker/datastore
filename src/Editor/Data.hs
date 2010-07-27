@@ -1,8 +1,8 @@
 {-# OPTIONS -O2 -Wall #-}
 {-# LANGUAGE TemplateHaskell, TypeOperators #-}
 module Editor.Data(
-    Data, gridModels, textEditModel, isExpanded,
-    gridModel,
+    Data, boxModels, textEditModel, isExpanded,
+    boxModel,
     Tree(..), nodeValue, nodeChildrenRefs,
     ITree, ITreeD, TreeD,
     makeValue, makeNode, makeNodeRef, makeLeafRef)
@@ -19,24 +19,24 @@ import qualified Data.Transaction                as Transaction
 import           Data.Record.Label               ((:->), mkLabels, label)
 import qualified Data.Record.Label.Map           as Label.Map
 import qualified Data.Record.Label.Maybe         as Label.Maybe
-import qualified Graphics.UI.VtyWidgets.Grid     as Grid
+import qualified Graphics.UI.VtyWidgets.Box      as Box
 import qualified Graphics.UI.VtyWidgets.TextEdit as TextEdit
 import           Data.Map                        (Map)
 import qualified Data.Map                        as Map
 
 data Data = Data {
-  _gridModels :: Map String Grid.Model,
+  _boxModels :: Map String Box.Model,
   _textEditModel :: TextEdit.Model,
   _isExpanded :: Bool
   }
   deriving (Show, Read, Eq, Ord)
 $(mkLabels [''Data])
-gridModels :: Data :-> Map String Grid.Model
+boxModels :: Data :-> Map String Box.Model
 textEditModel :: Data :-> TextEdit.Model
 isExpanded :: Data :-> Bool
 
-gridModel :: Grid.Model -> String -> Data :-> Grid.Model
-gridModel d key = Label.Maybe.fromMaybe d . Label.Map.value key . gridModels
+boxModel :: Box.Model -> String -> Data :-> Box.Model
+boxModel d key = Label.Maybe.fromMaybe d . Label.Map.value key . boxModels
 
 instance Binary Data where
   get = get3 Data
@@ -50,7 +50,7 @@ type ITree a = IRef (Tree a)
 makeValue :: String -> Data
 makeValue text =
   Data {
-    _gridModels = Map.empty,
+    _boxModels = Map.empty,
     _textEditModel = TextEdit.initModel text,
     _isExpanded = True
   }
