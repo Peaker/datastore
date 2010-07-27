@@ -2,7 +2,7 @@
 
 module Editor.Anchors(
     clipboard, root, rootIRef,
-    focalPointIRef, branches, view,
+    focalPointIRefs, branches, view,
     viewBoxsAnchor, dbBoxsAnchor,
     initDB,
     dbStore, DBTag,
@@ -45,8 +45,8 @@ rootIRef = IRef.anchor "root"
 root :: Monad m => Transaction.Property ViewTag m TreeD
 root = Transaction.fromIRef rootIRef
 
-focalPointIRef :: Monad m => Transaction.Property ViewTag m ITreeD
-focalPointIRef = Transaction.anchorRefDef "focalPoint" rootIRef
+focalPointIRefs :: Monad m => Transaction.Property ViewTag m [ITreeD]
+focalPointIRefs = Transaction.anchorRefDef "focalPoint" []
 
 boxsAnchor :: Monad m => String -> String -> Transaction.Property anyTag m Box.Model
 boxsAnchor name = Transaction.containerStr . Transaction.anchorContainerDef name $ Box.initModel

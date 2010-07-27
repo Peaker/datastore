@@ -185,7 +185,7 @@ makeTreeEdit depth clipboardRef treeIRef
           mconcat [
             pasteKeymap clipboard,
             appendNewNodeKeymap,
-            setRootKeymap,
+            setFocalPointKeymap,
             expandCollapseKeymap isExpanded
             ]
     return . Widget.weakerKeys keymap $ outerBox
@@ -221,8 +221,8 @@ makeTreeEdit depth clipboardRef treeIRef
                               Config.appendChildKey $ appendChild =<< Data.makeLeafRef ""
       moveToParentKeymap = Keymap.simpleton "Move to parent" Config.moveToParentKey .
                            Property.set outerBoxModelRef $ Box.Model 0
-      setRootKeymap = Keymap.simpleton "Set focal point" Config.setFocalPointKey $ setFocalPoint
-      setFocalPoint = Property.set Anchors.focalPointIRef treeIRef
+      setFocalPointKeymap = Keymap.simpleton "Set focal point" Config.setFocalPointKey $ setFocalPoint
+      setFocalPoint = Property.pureModify Anchors.focalPointIRefs (treeIRef:)
       appendChild newRef = do
         appendBoxChild childrenBoxModelRef childrenIRefsRef newRef
         Property.set outerBoxModelRef $ Box.Model 1
@@ -231,25 +231,25 @@ makeEditWidget :: Monad m =>
                   Transaction.Property ViewTag m [ITreeD] ->
                   Transaction ViewTag m (Widget (Transaction ViewTag m ()))
 makeEditWidget clipboardRef = do
-  focalPointIRef <- Property.get focalPointIRefRef
-  treeEdit <- makeTreeEdit 0 clipboardRef focalPointIRef
+  focalPointIRefs <- Property.get focalPointIRefsRef
+  treeEdit <- makeTreeEdit 0 clipboardRef (foldr const Anchors.rootIRef focalPointIRefs)
   widget <-
-    if not $ isAtRoot focalPointIRef
-    then makeBox Box.Vertical [goUp, treeEdit] (Anchors.viewBoxsAnchor "goRoot")
+    if not $ isAtRoot focalPointIRefs
+    then makeBox Box.Vertical [goUpButton, treeEdit] (Anchors.viewBoxsAnchor "goUp")
     else return treeEdit
   return .
-    Widget.strongerKeys (goRootKeymap focalPointIRef) $
+    Widget.strongerKeys (goUpKeymap focalPointIRefs) $
     widget
   where
-    goUp = Widget.strongerKeys goUpKeymap $ focusableTextView "[go up]"
-    goUpKeymap = Keymap.simpleton "Go to root" Config.actionKey goRoot
-    focalPointIRefRef = Anchors.focalPointIRef
-    isAtRoot = (Anchors.rootIRef ==)
-    goRootKeymap focalPointIRef =
-      if isAtRoot focalPointIRef
+    goUpButton = Widget.strongerKeys (Keymap.simpleton "Go up" Config.actionKey goUp) $
+                 focusableTextView "[go up]"
+    focalPointIRefsRef = Anchors.focalPointIRefs
+    isAtRoot = null
+    goUpKeymap focalPointIRefs =
+      if isAtRoot focalPointIRefs
       then mempty
-      else Keymap.simpleton "Go to root" Config.rootKey goRoot
-    goRoot = Property.set focalPointIRefRef Anchors.rootIRef
+      else Keymap.simpleton "Go up" Config.goUpKey goUp
+    goUp = Property.pureModify focalPointIRefsRef (drop 1)
 
 -- Take a widget parameterized on transaction on views (that lives in
 -- a nested transaction monad) and convert it to one parameterized on

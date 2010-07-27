@@ -2,7 +2,7 @@
 
 module Editor.Config(
     maxDepth,
-    quitKey, undoKey, rootKey, appendChildKey, delChildKey,
+    quitKey, undoKey, goUpKey, appendChildKey, delChildKey,
     setFocalPointKey, cutKey, pasteKey,
     makeBranchKey, delBranchKey,
     actionKey, collapseKey, expandKey, moveToParentKey)
@@ -15,7 +15,7 @@ maxDepth = 10
 
 quitKey = ([Vty.MCtrl], Vty.KASCII 'q')
 undoKey = ([Vty.MCtrl], Vty.KASCII 'z')
-rootKey = ([Vty.MCtrl], Vty.KASCII 'r')
+goUpKey = ([Vty.MCtrl], Vty.KASCII 'r')
 appendChildKey = ([Vty.MCtrl], Vty.KASCII 'n')
 delChildKey = ([Vty.MCtrl], Vty.KASCII 'o')
 setFocalPointKey = ([Vty.MCtrl], Vty.KASCII 'g')
