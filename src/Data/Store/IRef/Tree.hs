@@ -1,12 +1,12 @@
 {-# LANGUAGE TypeOperators, TemplateHaskell #-}
 
-module Data.IRef.Tree
+module Data.Store.IRef.Tree
     (Tree(..), nodeValue, nodeChildrenRefs)
 where
 
 import Data.Binary       (Binary(..))
 import Data.Binary.Utils (get2, put2)
-import Data.IRef         (IRef)
+import Data.Store.IRef   (IRef)
 import Data.Record.Label ((:->), mkLabels, label)
 
 data Tree a = Node {

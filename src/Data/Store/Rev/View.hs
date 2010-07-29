@@ -1,6 +1,6 @@
 {-# OPTIONS -O2 -Wall #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-module Data.Rev.View
+module Data.Store.Rev.View
     (View, curVersion, branch, setBranch, move, new, store)
 where
 
@@ -8,21 +8,21 @@ where
 -- | "current-version" values. This serves as a "cache" which is
 -- | redundant to the lists of changes stored in the version graph.
 
-import           Prelude           hiding (lookup)
-import           Control.Monad     (liftM, (<=<))
-import qualified Data.Record.Label as Label
-import qualified Data.Property     as Property
-import           Data.Property     (composeLabel)
-import qualified Data.Transaction  as Transaction
-import           Data.Transaction  (Transaction, Store(..))
-import qualified Data.Rev.Change   as Change
-import           Data.Rev.Branch   (Branch)
-import qualified Data.Rev.Branch   as Branch
-import           Data.Rev.ViewBranchInternal (ViewData(..), View(..), Branch(..), moveView, makeViewKey,
+import           Prelude                hiding (lookup)
+import           Control.Monad          (liftM, (<=<))
+import qualified Data.Record.Label      as Label
+import qualified Data.Store.Property    as Property
+import           Data.Store.Property    (composeLabel)
+import qualified Data.Store.Transaction as Transaction
+import           Data.Store.Transaction (Transaction, Store(..))
+import qualified Data.Store.Rev.Change  as Change
+import           Data.Store.Rev.Branch  (Branch)
+import qualified Data.Store.Rev.Branch  as Branch
+import           Data.Store.Rev.ViewBranchInternal (ViewData(..), View(..), Branch(..), moveView, makeViewKey,
                                               applyChangesToView, brViews, vdBranch)
-import           Data.Rev.Version  (Version)
-import qualified Data.Rev.Version  as Version
-import qualified Data.List         as List
+import           Data.Store.Rev.Version (Version)
+import qualified Data.Store.Rev.Version as Version
+import qualified Data.List              as List
 
 lookupBS :: Monad m => View -> Change.Key -> Transaction t m (Maybe Change.Value)
 lookupBS view = Transaction.lookupBS . makeViewKey view

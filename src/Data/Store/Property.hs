@@ -1,7 +1,7 @@
 {-# OPTIONS -O2 -Wall #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Data.Property(
+module Data.Store.Property(
     Property(..), composeLabel, compose,
     modify, modify_, pureModify)
 where

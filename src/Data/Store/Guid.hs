@@ -1,6 +1,6 @@
 {-# OPTIONS -O2 -Wall #-}
 
-module Data.Guid
+module Data.Store.Guid
     (Guid, make, bs, length, new, xor, fromString)
 where
 

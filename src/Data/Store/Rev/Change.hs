@@ -1,6 +1,6 @@
 {-# LANGUAGE TemplateHaskell, TypeOperators #-}
 {-# OPTIONS -O2 -Wall #-}
-module Data.Rev.Change
+module Data.Store.Rev.Change
     (Key, Value,
      Change(Change), make,
      Dir, objectKey, oldValue, newValue)
@@ -10,7 +10,7 @@ import Data.ByteString   (ByteString)
 import Data.Binary       (Binary(..))
 import Data.Binary.Utils (get3, put3)
 import Data.Record.Label ((:->), mkLabels, label)
-import Data.Guid         (Guid)
+import Data.Store.Guid   (Guid)
 
 type Key = Guid
 type Value = ByteString

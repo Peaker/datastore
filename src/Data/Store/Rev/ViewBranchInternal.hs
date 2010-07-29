@@ -4,7 +4,7 @@
 -- | View and Branch have a cyclic dependency. This module
 -- | contains the parts of both that both may depend on, to avoid the
 -- | cycle.
-module Data.Rev.ViewBranchInternal
+module Data.Store.Rev.ViewBranchInternal
     (ViewData(..), vdBranch,
      View(..),
      BranchData(..), brVersion, brViews,
@@ -12,21 +12,21 @@ module Data.Rev.ViewBranchInternal
      moveView, applyChangesToView, makeViewKey)
 where
 
-import           Control.Monad     (when)
-import qualified Data.Guid         as Guid
-import           Data.Guid         (Guid)
-import           Data.Transaction  (Transaction)
-import qualified Data.Transaction  as Transaction
-import           Data.Rev.Version  (Version)
-import qualified Data.Rev.Version  as Version
-import           Data.Rev.Change   (Change)
-import qualified Data.Rev.Change   as Change
-import           Data.Binary       (Binary(..))
-import           Data.Binary.Utils (get2, put2)
-import           Data.IRef         (IRef)
-import qualified Data.IRef         as IRef
-import qualified Data.Record.Label as Label
-import           Data.Record.Label ((:->), mkLabels, label)
+import           Control.Monad          (when)
+import qualified Data.Store.Guid        as Guid
+import           Data.Store.Guid        (Guid)
+import           Data.Store.Transaction (Transaction)
+import qualified Data.Store.Transaction as Transaction
+import           Data.Store.Rev.Version (Version)
+import qualified Data.Store.Rev.Version as Version
+import           Data.Store.Rev.Change  (Change)
+import qualified Data.Store.Rev.Change  as Change
+import           Data.Binary            (Binary(..))
+import           Data.Binary.Utils      (get2, put2)
+import           Data.Store.IRef        (IRef)
+import qualified Data.Store.IRef        as IRef
+import qualified Data.Record.Label      as Label
+import           Data.Record.Label      ((:->), mkLabels, label)
 
 newtype ViewData = ViewData { _vdBranch :: Branch }
   deriving (Binary, Eq, Ord, Show, Read)

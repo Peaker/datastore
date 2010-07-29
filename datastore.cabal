@@ -1,8 +1,8 @@
 Name:                datastore
 Version:             0.0.1
 Cabal-Version:       >= 1.2
-Synopsis:            Data Store and Editor
-Category:            graphics
+Synopsis:            Data Store
+Category:            database
 Description:
   The Data Store editor.
 
@@ -13,59 +13,28 @@ License:             GPL
 Stability:           experimental
 build-type:          Simple
 
-Executable Editor
+Library
   hs-Source-Dirs:      src
   Extensions:
-  Build-Depends:       base >= 4 && < 5, vtywidgets >= 0.0.6, binary == 0.5.*,
-                       directory >= 1.0.1.1, bytestring >= 0.9, BerkeleyDB >= 0.8,
-                       random >= 1.0.0, utf8-string >= 0.3, vty >= 4.2.1, fclabels >= 0.4.2 && < 0.5,
+  Build-Depends:       base >= 4 && < 5, vtywidgets >= 0.0.6 && < 0.1, binary == 0.5.*,
+                       directory >= 1.0.1.1 && < 1.1, bytestring >= 0.9 && < 1.0, BerkeleyDB >= 0.8 && < 0.9,
+                       random >= 1.0.0 && < 1.1, utf8-string >= 0.3 && < 0.4, vty >= 4.2.1 && < 4.3, fclabels >= 0.4.2 && < 0.5,
                        containers >= 0.3 && < 0.4, transformers >= 0.2.1 && < 0.3
-  Other-Modules:       Data.Random.Instances,
+  Exposed-Modules:     Data.Random.Instances,
                        Data.ByteString.Utils,
+                       Data.Binary.Utils,
                        Data.Record.Label.Tuple,
                        Data.Record.Label.Maybe,
                        Data.Record.Label.Map,
-                       Data.Guid,
-                       Data.ContainerRef,
-                       Data.IRef,
-                       Data.IRef.Tree,
-                       Data.Rev.Change,
-                       Data.Rev.Version,
-                       Data.Rev.Branch,
-                       Data.Rev.ViewBranchInternal,
-                       Data.Rev.View,
-                       Data.Transaction,
-                       Db,
-                       Editor.Data,
-                       Editor.Anchors,
-                       Editor.Config
-  ghc-options:         -O2 -Wall
-  main-is:             Editor/Main.hs
-  ghc-prof-options:    -prof -auto-all
-
-Executable toxml
-  hs-Source-Dirs:      src
-  Extensions:
-  Build-Depends:       base >= 4 && < 5, vtywidgets >= 0.0.6, binary == 0.5.*,
-                       directory >= 1.0.1.1, bytestring >= 0.9, BerkeleyDB >= 0.8,
-                       random >= 1.0.0, utf8-string >= 0.3, vty >= 4.2.1
-  Other-Modules:       Data.Random.Instances,
-                       Data.ByteString.Utils,
-                       Data.Record.Label.Tuple,
-                       Data.Record.Label.Maybe,
-                       Data.Record.Label.Map,
-                       Data.Rev.Change,
-                       Data.Rev.Version,
-                       Data.Rev.Branch,
-                       Data.Rev.View,
-                       Data.Rev.ViewBranchInternal,
-                       Data.Transaction,
-                       Data.ContainerRef,
-                       Data.IRef,
-                       Data.IRef.Tree,
-                       Db,
-                       Editor.Data,
-                       Editor.Anchors
-  ghc-options:         -O2 -Wall
-  main-is:             Editor/toxml.hs
-  ghc-prof-options:    -prof -auto-all
+                       Data.Store.Guid,
+                       Data.Store.ContainerRef,
+                       Data.Store.IRef,
+                       Data.Store.IRef.Tree,
+                       Data.Store.Rev.Change,
+                       Data.Store.Rev.Version,
+                       Data.Store.Rev.Branch,
+                       Data.Store.Rev.ViewBranchInternal,
+                       Data.Store.Rev.View,
+                       Data.Store.Transaction,
+                       Data.Store.Property,
+                       Data.Store.Db

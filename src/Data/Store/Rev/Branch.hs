@@ -1,16 +1,16 @@
 {-# OPTIONS -O2 -Wall #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-module Data.Rev.Branch
+module Data.Store.Rev.Branch
     (Branch, new, move, curVersion, newVersion)
 where
 
-import           Control.Monad               (liftM)
-import qualified Data.Transaction            as Transaction
-import           Data.Transaction            (Transaction)
-import           Data.Rev.Change             (Change)
-import           Data.Rev.Version            (Version)
-import qualified Data.Rev.Version            as Version
-import           Data.Rev.ViewBranchInternal (BranchData(..), Branch(..), moveView)
+import           Control.Monad                     (liftM)
+import qualified Data.Store.Transaction            as Transaction
+import           Data.Store.Transaction            (Transaction)
+import           Data.Store.Rev.Change             (Change)
+import           Data.Store.Rev.Version            (Version)
+import qualified Data.Store.Rev.Version            as Version
+import           Data.Store.Rev.ViewBranchInternal (BranchData(..), Branch(..), moveView)
 
 move :: Monad m => Branch -> Version -> Transaction t m ()
 move (Branch dataIRef) destVersion = do

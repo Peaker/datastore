@@ -1,3 +1,9 @@
+* Split datastore functionality to a library:
+   * Db, Transaction, Revisions, Editor.Main's makeBox/etc
+   * and an executable:
+     * Editor.Main's rest of stuff, anchors, data, ...
+
+
 --- XML UI ----------------------------------
 
 * Attributes, text leaf GUI widgets
@@ -57,7 +63,7 @@ Fix conflicts
 
   * Circularity achieved via higher-level reference encoding
 
-  * Revision control (Data.Rev.Change and Data.Rev.VersionMap) can use
+  * Revision control (Data.Store.Rev.Change and Data.Store.Rev.VersionMap) can use
     pure IRefs for object values
 
 --- GC ------------------------

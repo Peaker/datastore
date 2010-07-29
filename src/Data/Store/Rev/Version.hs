@@ -1,19 +1,19 @@
 {-# OPTIONS -O2 -Wall #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-module Data.Rev.Version
+module Data.Store.Rev.Version
     (VersionData, depth, parent, changes,
      Version, versionIRef, versionData,
      makeInitialVersion, newVersion, mostRecentAncestor,
      walkUp, walkDown, versionsBetween)
 where
 
-import           Control.Monad     (liftM, liftM2, join)
-import           Data.Binary       (Binary(..))
-import           Data.Binary.Utils (get3, put3)
-import           Data.IRef         (IRef)
-import           Data.Transaction  (Transaction)
-import qualified Data.Transaction  as Transaction
-import           Data.Rev.Change   (Change)
+import           Control.Monad          (liftM, liftM2, join)
+import           Data.Binary            (Binary(..))
+import           Data.Binary.Utils      (get3, put3)
+import           Data.Store.IRef        (IRef)
+import           Data.Store.Transaction (Transaction)
+import qualified Data.Store.Transaction as Transaction
+import           Data.Store.Rev.Change  (Change)
 
 data VersionData = VersionData {
   depth :: Int,

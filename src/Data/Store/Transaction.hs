@@ -1,7 +1,7 @@
 {-# OPTIONS -O2 -Wall #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving, TypeOperators #-}
 
-module Data.Transaction
+module Data.Store.Transaction
     (Transaction, run, Property,
      Store(..),
      lookupBS, lookup,
@@ -27,13 +27,13 @@ import           Control.Monad.Trans.Class        (MonadTrans(..))
 import           Data.ByteString.UTF8             (fromString)
 import           Data.Binary                      (Binary)
 import           Data.Binary.Utils                (encodeS, decodeS)
-import           Data.IRef                        (IRef)
-import qualified Data.IRef                        as IRef
-import           Data.ContainerRef                (ContainerRef)
-import qualified Data.ContainerRef                as ContainerRef
-import           Data.Guid                        (Guid)
-import qualified Data.Guid                        as Guid
-import qualified Data.Property                    as Property
+import           Data.Store.IRef                  (IRef)
+import qualified Data.Store.IRef                  as IRef
+import           Data.Store.ContainerRef          (ContainerRef)
+import qualified Data.Store.ContainerRef          as ContainerRef
+import           Data.Store.Guid                  (Guid)
+import qualified Data.Store.Guid                  as Guid
+import qualified Data.Store.Property              as Property
 import           Data.Monoid                      (mempty)
 import           Data.Maybe                       (isJust)
 import           Data.ByteString                  (ByteString)

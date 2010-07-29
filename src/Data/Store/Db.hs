@@ -1,6 +1,6 @@
 {-# OPTIONS -O2 -Wall #-}
 
-module Db
+module Data.Store.Db
     (Db, withDb,
      withCursor, nextKeyBS, nextKey, lookup, transaction, store)
 where
@@ -12,9 +12,9 @@ import qualified Database.Berkeley.Db as Berkeley
 import           Data.ByteString      (ByteString)
 import           Data.Binary          (Binary)
 import           Data.Binary.Utils    (decodeS)
-import           Data.Guid            (Guid)
-import qualified Data.Guid            as Guid
-import           Data.Transaction     (Store(..))
+import           Data.Store.Guid            (Guid)
+import qualified Data.Store.Guid            as Guid
+import           Data.Store.Transaction     (Store(..))
 import           System.Directory     (createDirectoryIfMissing)
 
 data Db = Db {
