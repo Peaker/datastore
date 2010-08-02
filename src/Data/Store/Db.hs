@@ -24,9 +24,6 @@ data Db = Db {
 
 type Cursor = Berkeley.DbCursor
 
-envDir :: FilePath
-envDir = "/tmp/dbenv"
-
 open :: FilePath -> IO Db
 open fileName = do
   createDirectoryIfMissing False envDir
@@ -38,6 +35,8 @@ open fileName = do
   Berkeley.dbEnv_withTxn [] [] env Nothing $ \txn ->
     Berkeley.db_open [Berkeley.DB_CREATE] Berkeley.DB_BTREE 0 db (Just txn) fileName (Just "DB title")
   return $ Db db env
+  where
+    envDir = fileName ++ ".env"
 
 close :: Db -> IO ()
 close (Db db env) = do
