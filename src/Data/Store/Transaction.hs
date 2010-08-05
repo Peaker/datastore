@@ -6,7 +6,7 @@ module Data.Store.Transaction
      Store(..),
      lookupBS, lookup,
      insertBS, insert,
-     deleteBS, delete,
+     deleteBS, delete, deleteIRef,
      readIRef, readIRefDef, writeIRef,
      irefExists,
      newIRef, newContainerRef, newKey,
@@ -107,6 +107,9 @@ readGuid :: (Monad m, Binary a) => Guid -> Transaction t m a
 readGuid guid = readGuidMb failure guid
   where
     failure = fail $ show guid ++ " to inexistent object dereferenced"
+
+deleteIRef :: Monad m => IRef a -> Transaction t m ()
+deleteIRef = delete . IRef.guid
 
 readIRefDef :: (Monad m, Binary a) => a -> IRef a -> Transaction t m a
 readIRefDef def = readGuidDef def . IRef.guid
