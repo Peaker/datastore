@@ -29,11 +29,14 @@ open fileName = do
   createDirectoryIfMissing False envDir
   env <- Berkeley.dbEnv_create []
   Berkeley.dbEnv_open [Berkeley.DB_CREATE, Berkeley.DB_INIT_MPOOL,
-                       Berkeley.DB_INIT_TXN, Berkeley.DB_INIT_LOCK,
+                       -- Berkeley.DB_INIT_TXN,
+                       Berkeley.DB_INIT_LOCK,
                        Berkeley.DB_INIT_LOG] 0 env envDir
   db <- Berkeley.db_create [] env
-  Berkeley.dbEnv_withTxn [] [] env Nothing $ \txn ->
-    Berkeley.db_open [Berkeley.DB_CREATE] Berkeley.DB_BTREE 0 db (Just txn) fileName (Just "DB title")
+--  Berkeley.dbEnv_withTxn [] [] env Nothing $ \txn ->
+  Berkeley.db_open [Berkeley.DB_CREATE] Berkeley.DB_BTREE 0 db
+              Nothing --(Just txn)
+              fileName (Just "DB title")
   return $ Db db env
   where
     envDir = fileName ++ ".env"
@@ -60,11 +63,14 @@ lookup :: Db -> Guid -> IO (Maybe ByteString)
 lookup db = Berkeley.db_get [] (dbBerkeley db) Nothing . Guid.bs
 
 transaction :: Db -> [(Guid, Maybe ByteString)] -> IO ()
-transaction db changes = Berkeley.dbEnv_withTxn [] [] (dbEnv db) Nothing $ \txn ->
-  mapM_ (uncurry (applyChange txn)) changes
+transaction db changes = -- . Berkeley.dbEnv_withTxn [] [] (dbEnv db) Nothing $ \txn ->
+  mapM_ (uncurry (applyChange
+                  -- (Just txn)
+                  Nothing
+                 )) changes
   where
-    applyChange txn key Nothing = Berkeley.db_del [] (dbBerkeley db) (Just txn) (Guid.bs key)
-    applyChange txn key (Just value) = Berkeley.db_put [] (dbBerkeley db) (Just txn) (Guid.bs key) value
+    applyChange txn key Nothing = Berkeley.db_del [] (dbBerkeley db) txn (Guid.bs key)
+    applyChange txn key (Just value) = Berkeley.db_put [] (dbBerkeley db) txn (Guid.bs key) value
 
 -- You get a Store tagged however you like...
 store :: Db -> Store t IO

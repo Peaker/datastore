@@ -4,7 +4,7 @@ Cabal-Version:       >= 1.2
 Synopsis:            Data Store
 Category:            database
 Description:
-  The Data Store editor.
+  An implementation of a key/value store wrapper and revision control based on it.
 
 Author:              Eyal Lotem
 Maintainer:          eyal.lotem@gmail.com
