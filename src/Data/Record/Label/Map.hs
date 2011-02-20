@@ -5,7 +5,7 @@ module Data.Record.Label.Map(value) where
 
 import qualified Data.Map          as Map
 import           Data.Map          (Map)
-import           Data.Record.Label ((:->), label)
+import           Data.Record.Label ((:->), lens)
 
 value :: Ord k => k -> Map k v :-> Maybe v
-value k = label (Map.lookup k) ((`Map.alter` k) . const)
+value k = lens (Map.lookup k) ((`Map.alter` k) . const)

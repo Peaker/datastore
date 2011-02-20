@@ -7,7 +7,7 @@ where
 import Data.Binary       (Binary(..))
 import Data.Binary.Utils (get2, put2)
 import Data.Store.IRef   (IRef)
-import Data.Record.Label ((:->), mkLabels, label)
+import Data.Record.Label ((:->), mkLabels, lens)
 
 data Tree a = Node {
   _nodeValue :: a,
@@ -15,8 +15,8 @@ data Tree a = Node {
   }
   deriving (Show, Read, Eq, Ord)
 $(mkLabels [''Tree])
-nodeValue :: Tree a :-> a
-nodeChildrenRefs :: Tree a :-> [IRef (Tree a)]
+-- nodeValue :: Tree a :-> a
+-- nodeChildrenRefs :: Tree a :-> [IRef (Tree a)]
 
 instance Binary a => Binary (Tree a) where
   put (Node value children) = put2 value children

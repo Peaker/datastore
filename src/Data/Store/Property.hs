@@ -37,5 +37,5 @@ infixl 5 `composeLabel`
 composeLabel :: Monad m => (a :-> b) -> Property m a -> Property m b
 composeLabel label (Property getter setter) = Property getter' setter'
   where
-    getter' = Label.get label `liftM` getter
-    setter' x = setter . Label.set label x =<< getter
+    getter' = Label.getL label `liftM` getter
+    setter' x = setter . Label.setL label x =<< getter

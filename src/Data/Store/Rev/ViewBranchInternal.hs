@@ -26,7 +26,7 @@ import           Data.Binary.Utils      (get2, put2)
 import           Data.Store.IRef        (IRef)
 import qualified Data.Store.IRef        as IRef
 import qualified Data.Record.Label      as Label
-import           Data.Record.Label      ((:->), mkLabels, label)
+import           Data.Record.Label      ((:->), mkLabels, lens)
 
 newtype ViewData = ViewData { _vdBranch :: Branch }
   deriving (Binary, Eq, Ord, Show, Read)
@@ -45,9 +45,9 @@ newtype Branch = Branch (IRef BranchData)
   deriving (Eq, Ord, Read, Show, Binary)
 
 $(mkLabels [''ViewData, ''BranchData])
-vdBranch :: ViewData :-> Branch
-brVersion :: BranchData :-> Version
-brViews :: BranchData :-> [View]
+-- vdBranch :: ViewData :-> Branch
+-- brVersion :: BranchData :-> Version
+-- brViews :: BranchData :-> [View]
 
 instance Binary BranchData where
   get = get2 BranchData
@@ -73,7 +73,7 @@ applyChangesToView :: Monad m => View -> Change.Dir -> [Change] -> Transaction t
 applyChangesToView vm changeDir = mapM_ applyChange
   where
     applyChange change = setValue
-                         (makeViewKey vm $ Label.get Change.objectKey change)
-                         (Label.get changeDir change)
+                         (makeViewKey vm $ Label.getL Change.objectKey change)
+                         (Label.getL changeDir change)
     setValue key Nothing      = Transaction.deleteBS key
     setValue key (Just value) = Transaction.insertBS key value

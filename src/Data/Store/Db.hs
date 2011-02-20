@@ -19,7 +19,7 @@ import           System.Directory       (createDirectoryIfMissing)
 
 data Db = Db {
   dbBerkeley :: Berkeley.Db,
-  dbEnv :: Berkeley.DbEnv
+  _dbEnv :: Berkeley.DbEnv
   }
 
 type Cursor = Berkeley.DbCursor

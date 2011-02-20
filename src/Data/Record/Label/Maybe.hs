@@ -4,7 +4,7 @@
 module Data.Record.Label.Maybe(fromMaybe) where
 
 import qualified Data.Maybe        as Maybe
-import           Data.Record.Label ((:->), label)
+import           Data.Record.Label ((:->), lens)
 
 fromMaybe :: a -> Maybe a :-> a
-fromMaybe d = label (Maybe.fromMaybe d) (const . Just)
+fromMaybe d = lens (Maybe.fromMaybe d) (const . Just)

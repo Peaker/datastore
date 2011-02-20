@@ -4,10 +4,10 @@
 module Data.Record.Label.Tuple(first, second) where
 
 import qualified Control.Arrow     as Arrow
-import           Data.Record.Label ((:->), label)
+import           Data.Record.Label ((:->), lens)
 
 first :: (a, b) :-> a
-first = label fst (Arrow.first . const)
+first = lens fst (Arrow.first . const)
 
 second :: (a, b) :-> b
-second = label snd (Arrow.second . const)
+second = lens snd (Arrow.second . const)

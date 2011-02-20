@@ -57,7 +57,7 @@ move :: Monad m => View -> Version -> Transaction t m ()
 move view version = (`Branch.move` version) =<< branch view
 
 branch :: Monad m => View -> Transaction t m Branch
-branch (View iref) = liftM (Label.get vdBranch) . Transaction.readIRef $ iref
+branch (View iref) = liftM (Label.getL vdBranch) . Transaction.readIRef $ iref
 
 transaction :: Monad m => View -> [(Change.Key, Maybe Change.Value)] -> Transaction t m ()
 transaction _    [] = return ()

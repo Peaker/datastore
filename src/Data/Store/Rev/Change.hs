@@ -9,7 +9,7 @@ where
 import Data.ByteString   (ByteString)
 import Data.Binary       (Binary(..))
 import Data.Binary.Utils (get3, put3)
-import Data.Record.Label ((:->), mkLabels, label)
+import Data.Record.Label ((:->), mkLabels, lens)
 import Data.Store.Guid   (Guid)
 
 type Key = Guid
@@ -23,10 +23,10 @@ data Change = Change {
   }
   deriving (Eq, Ord, Show, Read)
 $(mkLabels [''Change])
-objectKey :: Change :-> Key
+-- objectKey :: Change :-> Key
 type Dir = Change :-> Maybe Value
-oldValue :: Dir
-newValue :: Dir
+-- oldValue :: Dir
+-- newValue :: Dir
 instance Binary Change where
   get = get3 Change
   put (Change key old new) = put3 key old new
